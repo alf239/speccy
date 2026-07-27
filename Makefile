@@ -61,13 +61,34 @@ $(BUS_EXE): $(BUS_RTL) sim/bus_tb.cpp sim/test_rom.hex
 bustest: $(BUS_EXE)
 	./$(BUS_EXE)
 
+# CPU smoke test -- TV80 executing a generated ROM against the machine.
+CPU_MDIR := obj_dir_cpu
+CPU_EXE  := $(CPU_MDIR)/cpu_tb
+TV80_RTL := rtl/tv80/tv80s.v rtl/tv80/tv80_core.v rtl/tv80/tv80_alu.v \
+            rtl/tv80/tv80_mcode.v rtl/tv80/tv80_reg.v
+CPU_RTL  := rtl/video_timing.v rtl/vram.v rtl/ram.v rtl/video.v rtl/palette.v \
+            rtl/scandoubler.v rtl/keyboard.v rtl/speccy.v rtl/speccy48.v \
+            $(TV80_RTL) sim/speccy48_tb_top.v
+
+sim/cpu_rom.hex: sim/make_cpu_rom.py
+	python3 sim/make_cpu_rom.py $@
+
+$(CPU_EXE): $(CPU_RTL) sim/cpu_tb.cpp sim/cpu_rom.hex
+	$(VERILATOR) --cc --exe --build -j 0 --top-module speccy48_tb_top \
+	  --Mdir $(CPU_MDIR) -o cpu_tb \
+	  -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY \
+	  tv80.vlt $(CPU_RTL) sim/cpu_tb.cpp
+
+cputest: $(CPU_EXE)
+	./$(CPU_EXE)
+
 # Everything that can be checked without hardware.
-test: run joytest bustest
+test: run joytest bustest cputest
 
 lint:
 	$(VERILATOR) --lint-only --top-module $(TOP) -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY $(RTL)
 
 clean:
-	rm -rf $(MDIR) $(JOY_MDIR) $(BUS_MDIR) out sim/test_rom.hex
+	rm -rf $(MDIR) $(JOY_MDIR) $(BUS_MDIR) $(CPU_MDIR) out sim/test_rom.hex sim/cpu_rom.hex
 
-.PHONY: all run open lint clean joytest bustest test
+.PHONY: all run open lint clean joytest bustest cputest test

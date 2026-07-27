@@ -1,5 +1,7 @@
-obj_dir/
+obj_dir*/
 out/
 *.o
 *.bmp
 .DS_Store
+sim/test_rom.hex
+sim/cpu_rom.hex

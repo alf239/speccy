@@ -78,6 +78,11 @@ rtl/
   palette.v           4-bit colour index -> 4:4:4 RGB
   vram.v              true dual-port 16 KB screen bank
   joystick.v          DE-9 stick -> Kempston port byte
+  keyboard.v          48K matrix, 8 half-rows on A8..A15
+  ram.v               single-port RAM/ROM
+  speccy.v            the machine minus CPU: memory map, ports, INT, video
+  speccy48.v          the machine: TV80 in the socket
+  tv80/               vendored TV80 Z80 core (MIT, one local change)
   speccy_video_top.v  simulation top level
   de10_lite_top.v     board wrapper (Quartus only -- vendor PLL)
 sim/
@@ -123,7 +128,11 @@ software) doing the filesystem work. Roughly 500 LE instead of a WD1793 emulatio
 - [x] **1c** — Kempston joystick (no CPU needed — it's five switches to ground)
 - [ ] **1b** — VGA output on hardware; tune sync placement against a real monitor
 - [ ] **2** — video reading a static screen from block RAM, on hardware
-- [ ] **3** — T80 + 48K ROM booting BASIC; PS/2 keyboard
+- [x] **3a** — machine around the CPU socket: memory map, ULA ports, keyboard
+  matrix, Kempston decode, 50 Hz INT — verified by a testbench acting as the Z80
+- [x] **3b** — TV80 core vendored and in the socket; smoke-test ROM confirms
+  fetch/execute, OUT, writes to all banks, and IM 1 servicing one INT per frame
+- [ ] **3c** — real 48K ROM booting BASIC; PS/2 keyboard
 - [ ] **4** — beeper
 - [ ] **5** — divMMC + SD card → **Saboteur II**
 
