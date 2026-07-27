@@ -32,6 +32,13 @@ module vram #(
     output reg  [7:0]          b_dout
 );
 
+    // Quartus honours $readmemh for RAM initialisation, so the same file works
+    // in simulation and in synthesis. If your Quartus version refuses, use a
+    // .mif instead via the vendor attribute:
+    //
+    //   reg [7:0] mem [0:...] /* synthesis ram_init_file = "screen.mif" */;
+    //
+    // tools/ emits both formats from the same screen, so either path works.
     reg [7:0] mem [0:(1<<ADDR_W)-1];
 
     generate

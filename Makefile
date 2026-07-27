@@ -27,10 +27,28 @@ run: all
 open: run
 	@open out/frame00.bmp
 
+# Joystick testbench -- built with a short debounce so the test runs quickly.
+# DEBOUNCE must match the value in sim/joystick_tb.cpp.
+JOY_MDIR := obj_dir_joy
+JOY_EXE  := $(JOY_MDIR)/joystick_tb
+
+$(JOY_EXE): rtl/joystick.v sim/joystick_tb.cpp
+	$(VERILATOR) --cc --exe --build -j 0 --top-module joystick \
+	  --Mdir $(JOY_MDIR) -o joystick_tb \
+	  -Wall -Wno-DECLFILENAME \
+	  -GDEBOUNCE_CYCLES=64 \
+	  rtl/joystick.v sim/joystick_tb.cpp
+
+joytest: $(JOY_EXE)
+	./$(JOY_EXE)
+
+# Everything that can be checked without hardware.
+test: run joytest
+
 lint:
 	$(VERILATOR) --lint-only --top-module $(TOP) -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY $(RTL)
 
 clean:
-	rm -rf $(MDIR) out
+	rm -rf $(MDIR) $(JOY_MDIR) out
 
-.PHONY: all run open lint clean
+.PHONY: all run open lint clean joytest test

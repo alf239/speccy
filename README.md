@@ -62,8 +62,11 @@ make run FRAMES=40 SCR=path/to/screen.scr
 pattern exercising pixel detail, all eight colours, BRIGHT and FLASH.
 
 ```bash
-make lint
+make test
 ```
+
+`make test` runs the video checks and the joystick testbench. `make lint` runs
+Verilator's linter over the simulation RTL.
 
 ## Layout
 
@@ -74,9 +77,12 @@ rtl/
   scandoubler.v       15.625 -> 31.25 kHz, ping-pong line buffers
   palette.v           4-bit colour index -> 4:4:4 RGB
   vram.v              true dual-port 16 KB screen bank
-  speccy_video_top.v  top level, 14 MHz -> 7 MHz pixel enable
+  joystick.v          DE-9 stick -> Kempston port byte
+  speccy_video_top.v  simulation top level
+  de10_lite_top.v     board wrapper (Quartus only -- vendor PLL)
 sim/
-  main.cpp            Verilator harness, BMP frame dump
+  main.cpp            Verilator harness, BMP frame dump, .mif/.hex export
+  joystick_tb.cpp     joystick testbench
 docs/                 design notes (see below)
 ```
 
@@ -85,6 +91,8 @@ docs/                 design notes (see below)
 The reasoning behind the target, the fit analysis, and what was rejected:
 
 - [Phase 1: 48K + divMMC](docs/20260727-phase1-48k-divmmc.md) — **the plan being built**
+- [DE10-Lite bring-up](docs/20260727-de10-lite-bringup.md) — Quartus steps, PLL settings,
+  joystick wiring, and what to check when it doesn't work
 - [Which machine to build](docs/20260727-clone-lineage-and-target-choice.md) — Soviet clone
   lineage, and why a non-contended machine is the right target
 - [Scorpion ZS-256 fit](docs/20260727-scorpion-on-de10-lite.md) — phase 2, where SDRAM
@@ -112,6 +120,7 @@ software) doing the filesystem work. Roughly 500 LE instead of a WD1793 emulatio
 
 - [x] **0** — video generator + Verilator harness
 - [x] **1a** — scandoubler, 15.625 → 31.25 kHz
+- [x] **1c** — Kempston joystick (no CPU needed — it's five switches to ground)
 - [ ] **1b** — VGA output on hardware; tune sync placement against a real monitor
 - [ ] **2** — video reading a static screen from block RAM, on hardware
 - [ ] **3** — T80 + 48K ROM booting BASIC; PS/2 keyboard

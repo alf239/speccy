@@ -17,7 +17,11 @@
 
 `default_nettype none
 
-module speccy_video_top (
+module speccy_video_top #(
+    // On hardware the screen arrives this way, since there is no CPU to write
+    // it. Left empty in simulation, where the testbench writes through cpu_*.
+    parameter INIT_FILE = ""
+)(
     input  wire        clk,            // 14 MHz
     input  wire        rst,
 
@@ -62,7 +66,7 @@ module speccy_video_top (
     wire [13:0] vram_addr;
     wire [7:0]  vram_data;
 
-    vram #(.ADDR_W(14)) u_vram (
+    vram #(.ADDR_W(14), .INIT_FILE(INIT_FILE)) u_vram (
         .clk    (clk),
         .a_addr (cpu_addr),
         .a_din  (cpu_din),

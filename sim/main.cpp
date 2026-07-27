@@ -135,6 +135,40 @@ static void idx_to_rgb(uint8_t idx, bool blank, uint8_t* out) {
     out[2] = (blank || !(idx & 0x1)) ? 0 : expand4(level);   // blue
 }
 
+// ---------------------------------------------------------------------------
+// Memory images for synthesis.
+//
+// Emitted from the same screen the simulation runs, so the board and the
+// testbench cannot drift apart. .hex feeds $readmemh (which both Verilator and
+// Quartus accept); .mif is the fallback if Quartus declines to infer an
+// initialised RAM from $readmemh.
+// ---------------------------------------------------------------------------
+static const int VRAM_BYTES = 16384;
+
+static bool write_mem_images(const std::string& prefix, const uint8_t* scr) {
+    std::vector<uint8_t> bank(VRAM_BYTES, 0);
+    memcpy(bank.data(), scr, SCREEN_BYTES);
+
+    const std::string hexpath = prefix + ".hex";
+    FILE* f = fopen(hexpath.c_str(), "w");
+    if (!f) return false;
+    for (int i = 0; i < VRAM_BYTES; i++) fprintf(f, "%02X\n", bank[i]);
+    fclose(f);
+
+    const std::string mifpath = prefix + ".mif";
+    f = fopen(mifpath.c_str(), "w");
+    if (!f) return false;
+    fprintf(f, "DEPTH = %d;\nWIDTH = 8;\n"
+               "ADDRESS_RADIX = HEX;\nDATA_RADIX = HEX;\nCONTENT BEGIN\n", VRAM_BYTES);
+    for (int i = 0; i < VRAM_BYTES; i++) fprintf(f, "  %04X : %02X;\n", i, bank[i]);
+    fprintf(f, "END;\n");
+    fclose(f);
+
+    printf("wrote %s and %s (%d bytes of screen in a %d byte bank)\n",
+           hexpath.c_str(), mifpath.c_str(), SCREEN_BYTES, VRAM_BYTES);
+    return true;
+}
+
 // FNV-1a over one row of a framebuffer
 static uint64_t line_hash(const uint8_t* fb, int w, int y) {
     uint64_t h = 1469598103934665603ULL;
@@ -153,12 +187,14 @@ int main(int argc, char** argv) {
     bool        cycle   = false;
     std::string outdir  = "out";
     std::string scrfile;
+    std::string memprefix;
 
     for (int i = 1; i < argc; i++) {
         if      (!strcmp(argv[i], "--frames") && i + 1 < argc) frames  = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--border") && i + 1 < argc) border  = atoi(argv[++i]) & 7;
         else if (!strcmp(argv[i], "--out")    && i + 1 < argc) outdir  = argv[++i];
         else if (!strcmp(argv[i], "--scr")    && i + 1 < argc) scrfile = argv[++i];
+        else if (!strcmp(argv[i], "--mem")    && i + 1 < argc) memprefix = argv[++i];
         else if (!strcmp(argv[i], "--cycle"))                  cycle   = true;
     }
 
@@ -181,6 +217,11 @@ int main(int argc, char** argv) {
     } else {
         make_test_pattern(scr.data());
         printf("using synthetic test pattern\n");
+    }
+
+    if (!memprefix.empty() && !write_mem_images(memprefix, scr.data())) {
+        fprintf(stderr, "cannot write memory images with prefix %s\n", memprefix.c_str());
+        return 1;
     }
 
     std::vector<uint8_t> in_fb ((size_t)IN_W  * IN_H  * 3, 0);
