@@ -9,17 +9,36 @@ can make one.
 
 ## Status
 
-**Stage 0 complete** — video generator working and verified in simulation. No CPU yet.
+**Video generator and scandoubler working**, verified in simulation. No CPU yet.
 
 ![](docs/img/frame.png)
 
 The full 448×312 raster including blanking, dumped straight out of Verilator. The
 black cross is the horizontal and vertical blanking intervals; the picture sits
 top-left because `hc=0` is the first *displayed* pixel, so the left and top borders
-land at the far right and bottom.
+land at the far right and bottom — which is, incidentally, exactly the mechanism
+that made the real machine's picture sit off-centre.
 
-Verified rather than assumed: exactly 139776 pixels per frame (448 × 312), correct
-character-cell boundaries, correct colour order, BRIGHT and FLASH decoding.
+The scandoubler turns that 15.625 kHz raster into a 31.25 kHz one a VGA monitor will
+lock to, by reading each line back at twice the rate:
+
+```
+in : 448 x 312 @ 7 MHz    15.625 kHz line,  50.08 Hz frame
+out: 448 x 624 @ 14 MHz   31.25  kHz line,  50.08 Hz frame
+```
+
+No rate matching is needed because the ratio is exactly 2:1 — one input line is 896
+cycles of the 14 MHz clock, which is precisely two output lines of 448.
+
+### Verification
+
+`make run` is a test, not just a demo. Every frame it checks:
+
+- exactly 139776 input pixels (448 × 312) and 279552 output pixels (448 × 624)
+- output lines 2k and 2k+1 are byte-identical — the scandoubler's whole job
+- the set of doubled lines matches the set of input lines
+
+It exits non-zero on failure, so it works as a regression test as the design grows.
 
 ## Quick start
 
@@ -52,6 +71,8 @@ make lint
 rtl/
   video_timing.v      448x312 raster, sync, blanking -- all parameterised
   video.v             screen addressing, fetch pipeline, attributes, border
+  scandoubler.v       15.625 -> 31.25 kHz, ping-pong line buffers
+  palette.v           4-bit colour index -> 4:4:4 RGB
   vram.v              true dual-port 16 KB screen bank
   speccy_video_top.v  top level, 14 MHz -> 7 MHz pixel enable
 sim/
@@ -90,7 +111,8 @@ software) doing the filesystem work. Roughly 500 LE instead of a WD1793 emulatio
 ## Roadmap
 
 - [x] **0** — video generator + Verilator harness
-- [ ] **1** — scandoubler; VGA output on hardware, border colour from a register
+- [x] **1a** — scandoubler, 15.625 → 31.25 kHz
+- [ ] **1b** — VGA output on hardware; tune sync placement against a real monitor
 - [ ] **2** — video reading a static screen from block RAM, on hardware
 - [ ] **3** — T80 + 48K ROM booting BASIC; PS/2 keyboard
 - [ ] **4** — beeper

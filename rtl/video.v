@@ -33,12 +33,7 @@
 
 `default_nettype none
 
-module video #(
-    // DE10-Lite VGA is 4 bits per channel. The normal/bright ratio is a
-    // judgement call; real Spectrums vary between ULA revisions anyway.
-    parameter [3:0] LEVEL_NORMAL = 4'hC,
-    parameter [3:0] LEVEL_BRIGHT = 4'hF
-)(
+module video (
     input  wire        clk,           // 14 MHz
     input  wire        rst,
     input  wire        ce_pix,        // 7 MHz enable
@@ -49,16 +44,16 @@ module video #(
     output reg  [13:0] vram_addr,
     input  wire [7:0]  vram_data,
 
-    // Pixel stream out
-    output reg  [3:0]  vga_r,
-    output reg  [3:0]  vga_g,
-    output reg  [3:0]  vga_b,
-    output reg         vga_hsync,
-    output reg         vga_vsync,
-    output reg         vga_blank,
-
-    // Position of the pixel currently being emitted, pipelined to match the
-    // RGB outputs so a testbench can place it straight into a framebuffer.
+    // Pixel stream out, as 4-bit colour indices { BRIGHT, green, red, blue }.
+    // Expansion to RGB happens after the scandoubler, so the line buffer only
+    // has to carry 4 bits per pixel.
+    output reg  [3:0]  px_idx,
+    output reg         px_hsync,
+    output reg         px_vsync,
+    output reg         px_blank,      // horizontal or vertical
+    output reg         px_vblank,     // vertical only
+    // Position of the pixel currently being emitted, pipelined to match px_idx
+    // so a testbench can place it straight into a framebuffer.
     output reg  [8:0]  px_h,
     output reg  [8:0]  px_v,
     output wire        frame_end
@@ -71,7 +66,7 @@ module video #(
     // Raster timing
     // -----------------------------------------------------------------------
     wire [8:0] hc, vc;
-    wire       display, blank, hsync, vsync;
+    wire       display, blank, v_blank, hsync, vsync;
 
     video_timing u_timing (
         .clk       (clk),
@@ -82,6 +77,7 @@ module video #(
         .display   (display),
         .border    (),
         .blank     (blank),
+        .v_blank   (v_blank),
         .hsync     (hsync),
         .vsync     (vsync),
         .frame_end (frame_end)
@@ -163,29 +159,28 @@ module video #(
 
     wire [2:0] colour = display ? (pix ? ink : paper) : border_colour;
     wire       bright = display ? attr_cur[6] : 1'b0;   // border is never bright
-    wire [3:0] level  = bright ? LEVEL_BRIGHT : LEVEL_NORMAL;
 
     always @(posedge clk) begin
         if (rst) begin
-            vga_r     <= 4'd0;
-            vga_g     <= 4'd0;
-            vga_b     <= 4'd0;
-            vga_hsync <= 1'b0;
-            vga_vsync <= 1'b0;
-            vga_blank <= 1'b1;
+            px_idx    <= 4'd0;
+            px_hsync  <= 1'b0;
+            px_vsync  <= 1'b0;
+            px_blank  <= 1'b1;
+            px_vblank <= 1'b0;
             px_h      <= 9'd0;
             px_v      <= 9'd0;
         end else if (ce_pix) begin
-            vga_r <= (blank || !colour[1]) ? 4'h0 : level;   // bit 1 = red
-            vga_g <= (blank || !colour[2]) ? 4'h0 : level;   // bit 2 = green
-            vga_b <= (blank || !colour[0]) ? 4'h0 : level;   // bit 0 = blue
+            // Blanking is not forced into the index -- the line buffer carries
+            // true colour and the palette blanks at the output instead.
+            px_idx    <= {bright, colour};
 
-            vga_hsync <= hsync;
-            vga_vsync <= vsync;
-            vga_blank <= blank;
+            px_hsync  <= hsync;
+            px_vsync  <= vsync;
+            px_blank  <= blank;
+            px_vblank <= v_blank;
 
-            px_h <= hc;
-            px_v <= vc;
+            px_h      <= hc;
+            px_v      <= vc;
         end
     end
 

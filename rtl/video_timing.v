@@ -50,7 +50,9 @@ module video_timing #(
 
     output wire       display,      // inside the 256x192 window
     output wire       border,       // visible, but outside the window
-    output wire       blank,
+    output wire       blank,        // h_blank | v_blank
+    output wire       v_blank,      // vertical only -- the scandoubler
+                                    // regenerates the horizontal part itself
     output wire       hsync,
     output wire       vsync,
     output wire       frame_end     // pulses on the final pixel of the frame
@@ -92,8 +94,8 @@ module video_timing #(
     wire h_disp  = (hc < H_DISPLAY);
     wire v_disp  = (vc < V_DISPLAY);
     wire h_blank = (hc >= H_BLANK_BEG) && (hc < H_BLANK_END);
-    wire v_blank = (vc >= V_BLANK_BEG) && (vc < V_BLANK_END);
 
+    assign v_blank   = (vc >= V_BLANK_BEG) && (vc < V_BLANK_END);
     assign display   = h_disp && v_disp;
     assign blank     = h_blank || v_blank;
     assign border    = !display && !blank;

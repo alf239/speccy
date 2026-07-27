@@ -1,7 +1,7 @@
 VERILATOR ?= verilator
 
 TOP  := speccy_video_top
-RTL  := rtl/video_timing.v rtl/vram.v rtl/video.v rtl/speccy_video_top.v
+RTL  := rtl/video_timing.v rtl/vram.v rtl/video.v rtl/palette.v rtl/scandoubler.v rtl/speccy_video_top.v
 SIM  := sim/main.cpp
 MDIR := obj_dir
 EXE  := $(MDIR)/speccy_video_sim
