@@ -19,10 +19,12 @@ $(EXE): $(RTL) $(SIM)
 
 # Dump frames to out/. Pass SCR=path/to/file.scr to use a real screen instead
 # of the synthetic test pattern, FRAMES=n to change the count.
-FRAMES ?= 8
+# NOTE: FRAMES must not get a global default here -- `boot` below has its own
+# fallback, and a global would silently override it (it did: `make boot` ran
+# 8 frames and captured the middle of the RAM test instead of the (c) screen).
 run: all
 	@mkdir -p out
-	./$(EXE) --frames $(FRAMES) --out out $(if $(SCR),--scr $(SCR),)
+	./$(EXE) --frames $(or $(FRAMES),8) --out out $(if $(SCR),--scr $(SCR),)
 
 open: run
 	@open out/frame00.bmp
@@ -110,7 +112,7 @@ boot: $(BOOT_EXE)
 	@test -n "$(ROM)" || { echo "usage: make boot ROM=path/to/48.rom [FRAMES=n]"; exit 1; }
 	@mkdir -p out
 	python3 tools/bin2hex.py $(ROM) out/bootrom.hex
-	./$(BOOT_EXE) --frames $(if $(FRAMES),$(FRAMES),175) --out out/boot.bmp
+	./$(BOOT_EXE) --frames $(or $(FRAMES),175) --out out/boot.bmp
 	@echo "wrote out/boot.bmp"
 
 # Everything that can be checked without hardware.

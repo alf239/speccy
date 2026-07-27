@@ -9,15 +9,23 @@ can make one.
 
 ## Status
 
-**Video generator and scandoubler working**, verified in simulation. No CPU yet.
+**The machine boots.** TV80 executing the real 48K ROM against the full video
+chain, captured by a testbench that locks onto the sync stream exactly as a
+monitor would:
+
+![](docs/img/boot.png)
+
+Nothing outside the FPGA design produced that image — CPU, ULA-equivalent, RAM
+test, character rendering, scandoubler, sync. (`make boot ROM=path/to/48.rom`;
+the ROM itself is not in this repo.)
+
+The raster below is the earlier stage-0 view of the same video chain — the full
+448×312 frame including blanking. The picture sits top-left because `hc=0` is the
+first *displayed* pixel, so the left and top borders land at the far right and
+bottom — which is, incidentally, exactly the mechanism that made the real
+machine's picture sit off-centre.
 
 ![](docs/img/frame.png)
-
-The full 448×312 raster including blanking, dumped straight out of Verilator. The
-black cross is the horizontal and vertical blanking intervals; the picture sits
-top-left because `hc=0` is the first *displayed* pixel, so the left and top borders
-land at the far right and bottom — which is, incidentally, exactly the mechanism
-that made the real machine's picture sit off-centre.
 
 The scandoubler turns that 15.625 kHz raster into a 31.25 kHz one a VGA monitor will
 lock to, by reading each line back at twice the rate:
@@ -136,7 +144,8 @@ software) doing the filesystem work. Roughly 500 LE instead of a WD1793 emulatio
   matrix, Kempston decode, 50 Hz INT — verified by a testbench acting as the Z80
 - [x] **3b** — TV80 core vendored and in the socket; smoke-test ROM confirms
   fetch/execute, OUT, writes to all banks, and IM 1 servicing one INT per frame
-- [ ] **3c** — real 48K ROM booting BASIC (`make boot ROM=48.rom`, then Quartus); PS/2 keyboard
+- [x] **3c** — real 48K ROM boots to © 1982 in simulation
+- [ ] **3d** — same on hardware; PS/2 keyboard
 - [ ] **4** — beeper
 - [ ] **5** — divMMC + SD card → **Saboteur II**
 

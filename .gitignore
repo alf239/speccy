@@ -5,3 +5,9 @@ out/
 .DS_Store
 sim/test_rom.hex
 sim/cpu_rom.hex
+*.rom
+roms/
+quartus/rom48.hex
+quartus/output_files/
+quartus/db/
+quartus/incremental_db/
