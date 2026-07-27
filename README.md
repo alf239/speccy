@@ -145,7 +145,9 @@ software) doing the filesystem work. Roughly 500 LE instead of a WD1793 emulatio
 - [x] **3b** — TV80 core vendored and in the socket; smoke-test ROM confirms
   fetch/execute, OUT, writes to all banks, and IM 1 servicing one INT per frame
 - [x] **3c** — real 48K ROM boots to © 1982 in simulation
-- [ ] **3d** — same on hardware; PS/2 keyboard
+- [x] **3d** — **and on the real board** (2026-07-27, first-try bring-up: PLL,
+  pins and 50.08 Hz-over-VGA all worked unmodified)
+- [ ] **3e** — PS/2 keyboard, so it can be typed at
 - [ ] **4** — beeper
 - [ ] **5** — divMMC + SD card → **Saboteur II**
 
