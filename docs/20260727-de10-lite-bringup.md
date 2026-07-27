@@ -154,3 +154,37 @@ letterbox it or report an odd resolution. That's normal for a scandoubled Spectr
 
 **No `.mif` found** shows up as a black or garbage display with everything else
 working — check the LEDs first to distinguish this from a video failure.
+
+## Postscript, evening of 2026-07-27: it works
+
+First-try bring-up. © 1982 Sinclair Research Ltd on the VGA monitor; PLL, pin
+table and 50.08 Hz all accepted unmodified. The sync-position guesswork above
+turned out fine — the image sits a little off-centre on the panel, which the
+monitor's auto-adjust should absorb; tune `H_SYNC_OFF`/`V_SYNC_OFF` only if it
+doesn't.
+
+## Beeper output circuit
+
+One divider, one cap, into powered speakers or line-in. Values are non-critical
+(anything within 2× works); the jack is best scavenged from dead wired earbuds,
+using their cable. Tip and ring tied together for mono.
+
+```
+GPIO[35] --[ R1 10k ]--+--[ C2 1uF ]--> tip+ring of 3.5mm jack
+                       |
+                 [ R2 1k ]    (+ optional C1 10n across R2)
+                       |
+GND -------------------+--------------> sleeve
+```
+
+- R1/R2: divide 3.3 V down to ~0.3 Vpp — line-level polite. Ratio 5:1 to 20:1
+  all fine, it is just volume.
+- C2: DC block. 1 uF into a 10k line input passes >16 Hz; 100 nF also fine
+  (rolls off below ~160 Hz — the beeper has no bass to lose).
+- C1: ~16 kHz low-pass. Cosmetic for the beeper, but it becomes the DAC when
+  phase 2 does AY via sigma-delta — fit it now and the audio path never changes.
+
+`GPIO[35]` should be header pin 40 (corner), ground at pin 30 — **verify against
+the DE10-Lite manual's header table before soldering**, and mind pins 11/29,
+which are 5 V and 3.3 V outputs. Headphones directly off the divider will be
+very quiet; powered input is the intended load.
