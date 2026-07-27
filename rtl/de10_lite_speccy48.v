@@ -4,15 +4,16 @@
 // Quartus only (vendor PLL). Boots the ROM in rom48.hex; with the real 48K
 // ROM that means BASIC to the (c) 1982 message with nothing plugged in.
 //
-// No keyboard yet -- the matrix is tied idle, so the machine boots and sits
-// at the copyright screen. Joystick works (Kempston, port 0x1F), but the 48K
-// ROM itself doesn't read it; it becomes useful once a game is loaded.
-//
-//   SW[9]     sync polarity (flip if the monitor won't lock)
-//   KEY[0]    reset (hold)
-//   LEDR[4:0] joystick     LEDR[7:5] border     LEDR[8] PLL lock
-//   LEDR[9]   heartbeat    HEX1/HEX0 Kempston port byte
-//   GPIO[4:0] joystick in  GPIO[35]  beeper out (RC filter -> 3.5mm jack)
+//   SW[9]      sync polarity (flip if the monitor won't lock)
+//   KEY[0]     reset (hold)
+//   LEDR[4:0]  joystick     LEDR[7:5] border     LEDR[8] PLL lock
+//   LEDR[9]    heartbeat    HEX1/HEX0 Kempston port byte
+//   GPIO[4:0]  joystick in  GPIO[35]  beeper out (RC filter -> 3.5mm jack)
+//   GPIO[26]   PS/2 clock   GPIO[27]  PS/2 data   (header pins 31/32; wire
+//              each through a 2.2k series resistor -- the keyboard is a 5V
+//              device and MAX 10 is not 5V tolerant; the resistor limits the
+//              clamp-diode current to a safe fraction of a milliamp. Power
+//              the keyboard from the header's 5V pin, not 3.3V.)
 // ---------------------------------------------------------------------------
 
 `default_nettype none
@@ -65,12 +66,29 @@ module de10_lite_speccy48 (
     // -----------------------------------------------------------------------
     wire speaker;
 
-    assign GPIO[34:5] = 30'bz;
+    assign GPIO[34:5] = 30'bz;         // includes PS/2 pins: never driven
     assign GPIO[4:0]  = 5'bz;              // inputs (weak pull-ups in the qsf)
     assign GPIO[35]   = speaker;
 
     wire [4:0] joy_state;
     wire [7:0] kempston;
+
+    // PS/2 keyboard -- receive-only; both lines are inputs with weak pull-ups
+    wire [7:0]  ps2_code;
+    wire        ps2_valid;
+    wire [39:0] ps2_matrix;
+
+    ps2_rx u_ps2_rx (
+        .clk (clk14), .rst (rst),
+        .ps2_clk (GPIO[26]), .ps2_data (GPIO[27]),
+        .code (ps2_code), .valid (ps2_valid), .frame_err ()
+    );
+
+    ps2_keyboard u_ps2_map (
+        .clk (clk14), .rst (rst),
+        .code (ps2_code), .valid (ps2_valid),
+        .key_matrix (ps2_matrix)
+    );
 
     joystick #(.DEBOUNCE_CYCLES(14000)) u_joystick (
         .clk      (clk14),
@@ -91,7 +109,7 @@ module de10_lite_speccy48 (
     speccy48 #(.ROM_FILE("rom48.hex")) u_speccy (
         .clk        (clk14),
         .rst        (rst),
-        .key_matrix (40'd0),               // no keyboard yet: nothing pressed
+        .key_matrix (ps2_matrix),
         .joy_state  (joy_state),
         .ear_in     (1'b1),
         .speaker    (speaker),

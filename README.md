@@ -147,7 +147,10 @@ software) doing the filesystem work. Roughly 500 LE instead of a WD1793 emulatio
 - [x] **3c** — real 48K ROM boots to © 1982 in simulation
 - [x] **3d** — **and on the real board** (2026-07-27, first-try bring-up: PLL,
   pins and 50.08 Hz-over-VGA all worked unmodified)
-- [ ] **3e** — PS/2 keyboard, so it can be typed at
+- [x] **3e** — PS/2 receiver + scancode→matrix mapper; the testbench types
+  `10 P"hello"` / `R` into the real ROM over simulated PS/2 traffic and BASIC
+  runs it (`make boot ROM=48.rom TYPE='...'`)
+- [ ] **3f** — the physical keyboard (wiring: see the bring-up doc)
 - [ ] **4** — beeper
 - [ ] **5** — divMMC + SD card → **Saboteur II**
 

@@ -28,6 +28,8 @@ set_global_assignment -name VERILOG_FILE ../rtl/video.v
 set_global_assignment -name VERILOG_FILE ../rtl/palette.v
 set_global_assignment -name VERILOG_FILE ../rtl/scandoubler.v
 set_global_assignment -name VERILOG_FILE ../rtl/keyboard.v
+set_global_assignment -name VERILOG_FILE ../rtl/ps2_rx.v
+set_global_assignment -name VERILOG_FILE ../rtl/ps2_keyboard.v
 set_global_assignment -name VERILOG_FILE ../rtl/joystick.v
 set_global_assignment -name VERILOG_FILE ../rtl/speccy.v
 set_global_assignment -name VERILOG_FILE ../rtl/speccy48.v
@@ -171,3 +173,7 @@ set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[1]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[2]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[3]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[4]
+
+# PS/2 keyboard: clock and data, receive-only.
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[26]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[27]

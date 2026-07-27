@@ -8,10 +8,14 @@
 // itself makes sense.
 //
 //   boot_tb [--frames N] [--out FILE.bmp] [--all] [--expect-smoke]
+//           [--type "STRING"] [--type-at FRAME]
 //
 // --all dumps every frame (boot animation); default dumps only the last.
 // --expect-smoke asserts on the smoke-test ROM's known output, making this
 // runnable as a regression test without any copyrighted ROM present.
+// --type drives the string into the PS/2 pins as real scancode traffic once
+// the machine has booted (--type-at, default frame 120). '\n' is Enter;
+// '"' uses the SYM+P chord via the quote scancode.
 // ---------------------------------------------------------------------------
 
 #include <verilated.h>
@@ -57,14 +61,99 @@ static bool write_bmp(const char* path, const uint8_t* rgb, int w, int h) {
 
 static inline uint8_t expand4(uint8_t v) { return (uint8_t)(v * 17); }
 
+// ---------------------------------------------------------------------------
+// PS/2 typist: turns a string into scancode traffic, clocked out on the PS/2
+// pins at ~12.5 kHz while the machine runs. Each key is held for 3 frames and
+// released for 1 -- comfortably longer than the ROM's per-frame debounce.
+// ---------------------------------------------------------------------------
+struct Typist {
+    std::vector<uint8_t> bytes;      // flat stream: makes, breaks, gaps
+    enum : uint8_t { GAP = 0x00 };   // pseudo-byte: pause ~3 frames
+
+    size_t  idx = 0;
+    int     bit = -1;                // -1: idle/gap
+    long    timer = 0;
+    std::vector<int> frame;          // 11 bits of the current byte
+
+    static constexpr long HALF   = 560;    // 12.5 kHz at 14 MHz
+    // Release gap must exceed the ROM's ~5-frame KSTATE recovery, or the
+    // second press of a doubled letter ("ll" in hello) is swallowed.
+    static constexpr long GAPLEN = 6L * 279552;
+
+    static uint8_t sc(char c) {            // char -> set-2 make code
+        static const struct { char ch; uint8_t code; } tab[] = {
+            {'a',0x1C},{'b',0x32},{'c',0x21},{'d',0x23},{'e',0x24},{'f',0x2B},
+            {'g',0x34},{'h',0x33},{'i',0x43},{'j',0x3B},{'k',0x42},{'l',0x4B},
+            {'m',0x3A},{'n',0x31},{'o',0x44},{'p',0x4D},{'q',0x15},{'r',0x2D},
+            {'s',0x1B},{'t',0x2C},{'u',0x3C},{'v',0x2A},{'w',0x1D},{'x',0x22},
+            {'y',0x35},{'z',0x1A},
+            {'1',0x16},{'2',0x1E},{'3',0x26},{'4',0x25},{'5',0x2E},{'6',0x36},
+            {'7',0x3D},{'8',0x3E},{'9',0x46},{'0',0x45},
+            {' ',0x29},{'\n',0x5A},{'"',0x52},{',',0x41},{'.',0x49},
+            {'-',0x4E},{'=',0x55},{';',0x4C},{'/',0x4A},
+        };
+        for (auto& t : tab) if (t.ch == c) return t.code;
+        return 0;
+    }
+
+    void program(const std::string& text) {
+        for (char raw : text) {
+            const char c = (raw >= 'A' && raw <= 'Z') ? (char)(raw - 'A' + 'a') : raw;
+            const uint8_t k = sc(c);
+            if (!k) { fprintf(stderr, "typist: no scancode for '%c', skipped\n", raw); continue; }
+            bytes.push_back(k);                 // make
+            bytes.push_back(GAP);               // hold
+            bytes.push_back(0xF0);              // break
+            bytes.push_back(k);
+            bytes.push_back(GAP);               // release gap
+        }
+    }
+
+    bool done() const { return idx >= bytes.size() && bit < 0; }
+
+    // Advance one 14 MHz clock; returns {clk, data} to drive.
+    void step(uint8_t& pclk, uint8_t& pdat) {
+        pclk = 1; pdat = 1;
+        if (bit < 0) {                          // between bytes
+            if (timer > 0) { timer--; return; }
+            while (idx < bytes.size() && bytes[idx] == GAP) { timer = GAPLEN; idx++; return; }
+            if (idx >= bytes.size()) return;
+            const uint8_t b = bytes[idx++];
+            int ones = 0;
+            for (int i = 0; i < 8; i++) ones += (b >> i) & 1;
+            frame.clear();
+            frame.push_back(0);
+            for (int i = 0; i < 8; i++) frame.push_back((b >> i) & 1);
+            frame.push_back((ones & 1) ? 0 : 1);
+            frame.push_back(1);
+            bit = 0; timer = 0;
+        }
+        // Drive the current bit: data stable, clock low in the middle half.
+        const long ph = timer % (2 * HALF);
+        pdat = (uint8_t)frame[(size_t)bit];
+        pclk = (ph >= HALF / 2 && ph < HALF / 2 + HALF) ? 0 : 1;
+        timer++;
+        if (timer >= 2 * HALF) {
+            timer = 0;
+            bit++;
+            if (bit >= (int)frame.size()) { bit = -1; timer = HALF; }
+        }
+    }
+};
+
 int main(int argc, char** argv) {
     int         frames = 8;
     bool        all = false, expect_smoke = false;
     std::string outfile = "out/boot.bmp";
 
+    std::string type_str;
+    int type_at = 120;
+
     for (int i = 1; i < argc; i++) {
         if      (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--out")    && i + 1 < argc) outfile = argv[++i];
+        else if (!strcmp(argv[i], "--type")   && i + 1 < argc) type_str = argv[++i];
+        else if (!strcmp(argv[i], "--type-at")&& i + 1 < argc) type_at = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--all"))                    all = true;
         else if (!strcmp(argv[i], "--expect-smoke"))           expect_smoke = true;
     }
@@ -74,6 +163,7 @@ int main(int argc, char** argv) {
     Vboot_tb_top top(&ctx);
 
     top.rst = 1; top.key_matrix = 0; top.joy_state = 0; top.ear_in = 1;
+    top.ps2_clk = 1; top.ps2_data = 1;
     for (int i = 0; i < 16; i++) { top.clk = 0; top.eval(); top.clk = 1; top.eval(); }
     top.rst = 0;
 
@@ -86,7 +176,16 @@ int main(int argc, char** argv) {
     long hs_edges = 0, vs_edges = 0;
     long lines_this_frame = 0, lines_last_frame = 0;
 
+    Typist typist;
+    if (!type_str.empty()) typist.program(type_str);
+    bool typing_started = false;
+
     while (frame_no < frames) {
+        if (typing_started && !typist.done()) {
+            uint8_t pc, pd;
+            typist.step(pc, pd);
+            top.ps2_clk = pc; top.ps2_data = pd;
+        }
         top.clk = 0; top.eval();
         top.clk = 1; top.eval();
 
@@ -108,6 +207,10 @@ int main(int argc, char** argv) {
                     write_bmp(path, fb.data(), W, H);
                 }
                 frame_no++;
+                if (!type_str.empty() && frame_no == type_at) {
+                    typing_started = true;
+                    printf("  typing \"%s\" from frame %d\n", type_str.c_str(), type_at);
+                }
                 if ((frame_no % 25) == 0)
                     printf("  frame %d/%d\n", frame_no, frames);
             }

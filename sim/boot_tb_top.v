@@ -10,7 +10,9 @@ module boot_tb_top #(
     input  wire        clk,
     input  wire        rst,
 
-    input  wire [39:0] key_matrix,
+    input  wire [39:0] key_matrix,   // OR-ed with the PS/2-derived matrix
+    input  wire        ps2_clk,
+    input  wire        ps2_data,
     input  wire [4:0]  joy_state,
     input  wire        ear_in,
     output wire        speaker,
@@ -25,10 +27,27 @@ module boot_tb_top #(
     output wire        vga_blank
 );
 
+    // PS/2 chain, exactly as wired on the board
+    wire [7:0]  ps2_code;
+    wire        ps2_valid;
+    wire [39:0] ps2_matrix;
+
+    ps2_rx u_ps2_rx (
+        .clk (clk), .rst (rst),
+        .ps2_clk (ps2_clk), .ps2_data (ps2_data),
+        .code (ps2_code), .valid (ps2_valid), .frame_err ()
+    );
+
+    ps2_keyboard u_ps2_map (
+        .clk (clk), .rst (rst),
+        .code (ps2_code), .valid (ps2_valid),
+        .key_matrix (ps2_matrix)
+    );
+
     speccy48 #(.ROM_FILE(ROM_FILE)) u_ss (
         .clk        (clk),
         .rst        (rst),
-        .key_matrix (key_matrix),
+        .key_matrix (key_matrix | ps2_matrix),
         .joy_state  (joy_state),
         .ear_in     (ear_in),
         .speaker    (speaker),

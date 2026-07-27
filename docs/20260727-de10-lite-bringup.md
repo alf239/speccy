@@ -188,3 +188,47 @@ GND -------------------+--------------> sleeve
 the DE10-Lite manual's header table before soldering**, and mind pins 11/29,
 which are 5 V and 3.3 V outputs. Headphones directly off the divider will be
 very quiet; powered input is the intended load.
+
+## PS/2 keyboard wiring (stage 3e)
+
+The FPGA side is `GPIO[26]` = clock, `GPIO[27]` = data (header pins 31/32,
+next to the GND at pin 30). Both are receive-only inputs with weak pull-ups
+in the qsf. Three rules:
+
+1. **Power the keyboard from the header's 5 V pin (pin 11)**, ground at 12 or
+   30. PS/2 keyboards are 5 V devices; most won't run from 3.3 V.
+2. **Put a 2.2 kΩ resistor in series with clock and with data** (the joystick
+   kit has five). The keyboard pulls these lines to 5 V and MAX 10 is not 5 V
+   tolerant; the resistor limits the input clamp-diode current to ~0.5 mA,
+   which turns "out of spec" into "out of spec, safely".
+3. **Clock/data swapped is harmless** — both are inputs, nothing can be
+   damaged. If the keyboard is powered but no keys register, swap the two
+   signal wires and try again. This is the cheapest debugging step in the
+   whole project.
+
+### Sacrificial PS/2-to-USB adapter as the socket
+
+A passive adapter donates a female mini-DIN-6 with a short pigtail. Do NOT
+trust wire colours or pinout diagrams read off the female face (it mirrors
+the male drawing — the classic trap). Instead, identify electrically:
+
+- Beep from the **USB plug's outer two contacts** (VBUS and GND) back to the
+  DIN side: that finds 5 V and ground with certainty.
+- The remaining two connected pins are clock and data. Which is which
+  doesn't matter (rule 3): guess, and swap if dead.
+
+Note: only ~4 of the 6 DIN pins will have continuity to anything — pins 2
+and 6 are unconnected in a keyboard adapter. That's expected.
+
+### What the simulation already proves
+
+`make boot ROM=48.rom TYPE='...'` drives real scancode traffic into the PS/2
+pins of the full machine. The testbench has typed `10 P"hello"` + `R` + Enter
+into the actual ROM: program entered, run, `hello` printed, `0 OK, 10:1`.
+So when the physical keyboard misbehaves, the suspects are wiring and the
+5 V domain, not the RTL.
+
+Timing quirk found doing that: the ROM's KSTATE machinery refuses to
+re-register a key within ~5 frames of its release — a real Spectrum
+behaviour, not a bug. Double letters ("ll") typed faster than that lose the
+second press. Humans never type that fast; testbenches do.

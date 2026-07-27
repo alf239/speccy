@@ -90,6 +90,7 @@ cputest: $(CPU_EXE)
 BOOT_MDIR := obj_dir_boot
 BOOT_EXE  := $(BOOT_MDIR)/boot_tb
 BOOT_RTL  := rtl/video_timing.v rtl/vram.v rtl/ram.v rtl/video.v rtl/palette.v \
+             rtl/ps2_rx.v rtl/ps2_keyboard.v \
              rtl/scandoubler.v rtl/keyboard.v rtl/speccy.v rtl/speccy48.v \
              $(TV80_RTL) sim/boot_tb_top.v
 # The ROM path is baked in as out/bootrom.hex; the file is re-generated per
@@ -112,16 +113,29 @@ boot: $(BOOT_EXE)
 	@test -n "$(ROM)" || { echo "usage: make boot ROM=path/to/48.rom [FRAMES=n]"; exit 1; }
 	@mkdir -p out
 	python3 tools/bin2hex.py $(ROM) out/bootrom.hex
-	./$(BOOT_EXE) --frames $(or $(FRAMES),175) --out out/boot.bmp
+	./$(BOOT_EXE) --frames $(or $(FRAMES),175) --out out/boot.bmp $(if $(TYPE),--type "$(TYPE)",)
 	@echo "wrote out/boot.bmp"
 
+# PS/2 receiver + scancode-to-matrix mapper.
+PS2_MDIR := obj_dir_ps2
+PS2_EXE  := $(PS2_MDIR)/ps2_tb
+
+$(PS2_EXE): rtl/ps2_rx.v rtl/ps2_keyboard.v sim/ps2_tb_top.v sim/ps2_tb.cpp
+	$(VERILATOR) --cc --exe --build -j 0 --top-module ps2_tb_top \
+	  --Mdir $(PS2_MDIR) -o ps2_tb \
+	  -Wall -Wno-DECLFILENAME \
+	  rtl/ps2_rx.v rtl/ps2_keyboard.v sim/ps2_tb_top.v sim/ps2_tb.cpp
+
+ps2test: $(PS2_EXE)
+	./$(PS2_EXE)
+
 # Everything that can be checked without hardware.
-test: run joytest bustest cputest boottest
+test: run joytest bustest cputest boottest ps2test
 
 lint:
 	$(VERILATOR) --lint-only --top-module $(TOP) -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY $(RTL)
 
 clean:
-	rm -rf $(MDIR) $(JOY_MDIR) $(BUS_MDIR) $(CPU_MDIR) $(BOOT_MDIR) out sim/test_rom.hex sim/cpu_rom.hex
+	rm -rf $(MDIR) $(JOY_MDIR) $(BUS_MDIR) $(CPU_MDIR) $(BOOT_MDIR) $(PS2_MDIR) out sim/test_rom.hex sim/cpu_rom.hex
 
-.PHONY: all run open lint clean joytest bustest cputest boottest boot test
+.PHONY: all run open lint clean joytest bustest cputest boottest boot ps2test test
