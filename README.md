@@ -85,9 +85,13 @@ rtl/
   tv80/               vendored TV80 Z80 core (MIT, one local change)
   speccy_video_top.v  simulation top level
   de10_lite_top.v     board wrapper (Quartus only -- vendor PLL)
+quartus/              complete Quartus project: qpf, qsf (121 pins), sdc
 sim/
   main.cpp            Verilator harness, BMP frame dump, .mif/.hex export
   joystick_tb.cpp     joystick testbench
+  bus_tb.cpp          testbench acting as the Z80
+  cpu_tb.cpp          TV80 smoke test
+  boot_tb.cpp         virtual monitor: sync-locked capture of the full machine
 docs/                 design notes (see below)
 ```
 
@@ -132,7 +136,7 @@ software) doing the filesystem work. Roughly 500 LE instead of a WD1793 emulatio
   matrix, Kempston decode, 50 Hz INT — verified by a testbench acting as the Z80
 - [x] **3b** — TV80 core vendored and in the socket; smoke-test ROM confirms
   fetch/execute, OUT, writes to all banks, and IM 1 servicing one INT per frame
-- [ ] **3c** — real 48K ROM booting BASIC; PS/2 keyboard
+- [ ] **3c** — real 48K ROM booting BASIC (`make boot ROM=48.rom`, then Quartus); PS/2 keyboard
 - [ ] **4** — beeper
 - [ ] **5** — divMMC + SD card → **Saboteur II**
 

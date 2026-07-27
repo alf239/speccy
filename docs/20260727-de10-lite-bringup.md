@@ -2,6 +2,30 @@
 
 *2026-07-27 — what can be done on the Windows box now, before the keyboard arrives.*
 
+**Update, later the same day:** the Quartus project is now written and committed —
+`quartus/speccy.qpf` opens directly, with all 121 pin assignments (cross-checked
+against three independent DE10-Lite projects), the PLL as a hand-written altpll
+instantiation, and timing constraints. The IP Catalog and pin-import steps below
+are therefore **obsolete** — kept only in case the hand-written PLL is rejected by
+a different Quartus version.
+
+The default top is now the **full machine** (`de10_lite_speccy48`): with
+`rom48.hex` present it boots the 48K ROM to the © 1982 message, no keyboard
+needed. The static-screen ladder below is still the right first step if anything
+misbehaves — switch `TOP_LEVEL_ENTITY` to `de10_lite_top` in the qsf.
+
+## On the Windows box
+
+```
+git clone https://github.com/alf239/speccy
+python tools/bin2hex.py 48.rom quartus/rom48.hex
+```
+
+Open `quartus/speccy.qpf`, Start Compilation, then Tools → Programmer → the
+`.sof` in `quartus/output_files/`. Before flashing, run `make boot ROM=48.rom`
+on the Mac and look at `out/boot.bmp` — if © 1982 renders in simulation, any
+hardware failure is pins/PLL/monitor, not logic.
+
 ## What this stage delivers
 
 A real Spectrum screen on a real monitor, with no CPU:

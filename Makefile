@@ -82,13 +82,44 @@ $(CPU_EXE): $(CPU_RTL) sim/cpu_tb.cpp sim/cpu_rom.hex
 cputest: $(CPU_EXE)
 	./$(CPU_EXE)
 
+# Boot test -- the full machine watched like a monitor (sync-locked capture).
+# Default ROM is the smoke ROM so this runs without any copyrighted image;
+# point it at the real thing with:  make boot ROM=path/to/48.rom FRAMES=175
+BOOT_MDIR := obj_dir_boot
+BOOT_EXE  := $(BOOT_MDIR)/boot_tb
+BOOT_RTL  := rtl/video_timing.v rtl/vram.v rtl/ram.v rtl/video.v rtl/palette.v \
+             rtl/scandoubler.v rtl/keyboard.v rtl/speccy.v rtl/speccy48.v \
+             $(TV80_RTL) sim/boot_tb_top.v
+# The ROM path is baked in as out/bootrom.hex; the file is re-generated per
+# run ($readmemh reads at runtime, so no rebuild when the ROM changes).
+ROM ?=
+
+$(BOOT_EXE): $(BOOT_RTL) sim/boot_tb.cpp
+	$(VERILATOR) --cc --exe --build -j 0 --top-module boot_tb_top \
+	  --Mdir $(BOOT_MDIR) -o boot_tb \
+	  -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY \
+	  -GROM_FILE='"out/bootrom.hex"' \
+	  tv80.vlt $(BOOT_RTL) sim/boot_tb.cpp
+
+boottest: $(BOOT_EXE) sim/cpu_rom.hex
+	@mkdir -p out
+	cp sim/cpu_rom.hex out/bootrom.hex
+	./$(BOOT_EXE) --frames 8 --expect-smoke --out out/boot_smoke.bmp
+
+boot: $(BOOT_EXE)
+	@test -n "$(ROM)" || { echo "usage: make boot ROM=path/to/48.rom [FRAMES=n]"; exit 1; }
+	@mkdir -p out
+	python3 tools/bin2hex.py $(ROM) out/bootrom.hex
+	./$(BOOT_EXE) --frames $(if $(FRAMES),$(FRAMES),175) --out out/boot.bmp
+	@echo "wrote out/boot.bmp"
+
 # Everything that can be checked without hardware.
-test: run joytest bustest cputest
+test: run joytest bustest cputest boottest
 
 lint:
 	$(VERILATOR) --lint-only --top-module $(TOP) -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY $(RTL)
 
 clean:
-	rm -rf $(MDIR) $(JOY_MDIR) $(BUS_MDIR) $(CPU_MDIR) out sim/test_rom.hex sim/cpu_rom.hex
+	rm -rf $(MDIR) $(JOY_MDIR) $(BUS_MDIR) $(CPU_MDIR) $(BOOT_MDIR) out sim/test_rom.hex sim/cpu_rom.hex
 
-.PHONY: all run open lint clean joytest bustest cputest test
+.PHONY: all run open lint clean joytest bustest cputest boottest boot test
