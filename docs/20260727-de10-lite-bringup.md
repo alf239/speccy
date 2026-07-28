@@ -314,3 +314,16 @@ label is truthful only because the Pi coincidentally grounds pin 30 too.)
 ribbon cannot fake both): hole `P17` (J1 row 6) reads 5 V and hole `P05`
 (J1 row 15) reads 3.3 V. Wrong readings = flip the ribbon at the board end;
 the cobbler end is keyed.
+
+### This particular adapter's pigtail (beeped out 2026-07-28)
+
+| Wire | mini-DIN pin | Function | Connection |
+| --- | --- | --- | --- |
+| red | 4 | Vcc | straight to J1 row 6 (`P17`) = 5 V |
+| blue | 3 | GND | straight to J2 row 6 (`P18`) |
+| white | 5 | clock | 2.2 kΩ to J1 row 16 (`P06`) |
+| green | 1 | data | 2.2 kΩ to J1 row 17 (`P13`) |
+
+Identified by continuity, not colour convention (though it happens to match
+it). Keyboard lock-LEDs flashing at power-on = free proof the 5 V path works
+before any key is pressed.
