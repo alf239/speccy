@@ -124,7 +124,14 @@ Saboteur II running on a monitor. Everything below picks up from there:
 6. Move RAM from block RAM to SDRAM — no functional change, purely the memory
    subsystem swap, so it can be verified against a known-good machine
 7. Extend to 128K paging (#7FFD)
-8. AY sound
+8. AY sound — **build the volume/envelope DAC as two selectable curves (AY-3-8912
+   vs YM2149F) with a board switch on the select line.** The chips differ almost
+   only there (YM has 32-step envelope resolution vs 16), so the cost is two
+   small tables and a mux — and the switch works live, mid-tune. Proposed
+   allocation: SW[8], next to SW[9] = sync polarity. Keep a switch map in the
+   board top's header comment as these accumulate. The AY's port A register
+   must exist and read back (the 128 hangs its keypad/RS-232 off it; software
+   probes it) even though it will be wired to nothing.
 9. Scorpion extensions: #1FFD paging, 256K, 7 MHz turbo, service ROM
 10. Beta Disk / TR-DOS, if TRD images specifically matter
 
