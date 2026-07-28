@@ -320,7 +320,7 @@ the cobbler end is keyed.
 | Wire | mini-DIN pin | Function | Connection |
 | --- | --- | --- | --- |
 | red | 4 | Vcc | straight to J1 row 6 (`P17`) = 5 V |
-| blue | 3 | GND | straight to J2 row 6 (`P18`) |
+| black | 3 | GND | straight to J2 row 6 (`P18`) |
 | white | 5 | clock | 2.2 kΩ to J1 row 16 (`P06`) |
 | green | 1 | data | 2.2 kΩ to J1 row 17 (`P13`) |
 
