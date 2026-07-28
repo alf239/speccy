@@ -12,10 +12,15 @@
 // All peripheral signals sit on the ODD column of the header, so the whole
 // machine wires along one physical row (plus one ground wire to pin 12/30):
 //
-//   header  1  3  5  7  9   GPIO[0,2,4,6,8]   joystick U D L R F
+//   header  1  3  5  7 13   GPIO[0,2,4,6,10]  joystick U D L R F
 //   header 11                                 5V for the keyboard
 //   header 31 33             GPIO[26,28]      PS/2 clock, data
-//   header 39                GPIO[34]         beeper out (RC -> 3.5mm jack)
+//   header 37                GPIO[32]         beeper out (RC -> 3.5mm jack)
+//
+// Pins 9,14,20,25,34,39 (GPIO[8,11,17,22,29,34]) are grounded by the Pi
+// T-cobbler's ground pour (they are all GND on a Pi) -- never assign them
+// as signals while the cobbler is fitted. Discovered when the Kempston
+// byte read 0x10 with no joystick: pin 9 is fire, and its hole says GND.
 //
 // PS/2 lines go through 2.2k series resistors -- the keyboard is a 5V device
 // and MAX 10 is not 5V tolerant; the resistor limits clamp-diode current to
@@ -72,10 +77,11 @@ module de10_lite_speccy48 (
     // -----------------------------------------------------------------------
     wire speaker;
 
-    // Everything is an input except the beeper. (Even-column pins unused.)
-    assign GPIO[33:0] = 34'bz;
-    assign GPIO[35]   = 1'bz;
-    assign GPIO[34]   = speaker;
+    // Everything is an input except the beeper. (Even-column pins unused;
+    // cobbler-grounded pins stay tri-stated so the pour is harmless.)
+    assign GPIO[31:0]  = 32'bz;
+    assign GPIO[35:33] = 3'bz;
+    assign GPIO[32]    = speaker;
 
     wire [4:0] joy_state;
     wire [7:0] kempston;
@@ -126,8 +132,9 @@ module de10_lite_speccy48 (
     joystick #(.DEBOUNCE_CYCLES(14000)) u_joystick (
         .clk      (clk14),
         .rst      (rst),
-        // odd header column: {fire,right,left,down,up} = pins 9,7,5,3,1
-        .pin_n    ({GPIO[8], GPIO[6], GPIO[4], GPIO[2], GPIO[0]}),
+        // odd header column: {fire,right,left,down,up} = pins 13,7,5,3,1
+        // (fire skips pin 9: the Pi cobbler's ground pour grounds it)
+        .pin_n    ({GPIO[10], GPIO[6], GPIO[4], GPIO[2], GPIO[0]}),
         .state    (joy_state),
         .kempston (kempston)
     );

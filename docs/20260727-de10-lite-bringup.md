@@ -51,7 +51,7 @@ and wire the connector straight in.
 | 2 | down | `GPIO[2]` — header pin 3 |
 | 3 | left | `GPIO[4]` — header pin 5 |
 | 4 | right | `GPIO[6]` — header pin 7 |
-| 6 | fire | `GPIO[8]` — header pin 9 |
+| 6 | fire | `GPIO[10]` — header pin 13 (pin 9 is cobbler-grounded, see below) |
 | 8 | ground | GND — header pin 12 or 30 |
 
 Pin 9 is a second fire button on some sticks; Kempston has no bit for it.
@@ -170,7 +170,7 @@ One divider, one cap, into powered speakers or line-in. Values are non-critical
 using their cable. Tip and ring tied together for mono.
 
 ```
-GPIO[34] --[ R1 10k ]--+--[ C2 1uF ]--> tip+ring of 3.5mm jack
+GPIO[32] --[ R1 10k ]--+--[ C2 1uF ]--> tip+ring of 3.5mm jack
                        |
                  [ R2 1k ]    (+ optional C1 10n across R2)
                        |
@@ -184,8 +184,8 @@ GND -------------------+--------------> sleeve
 - C1: ~16 kHz low-pass. Cosmetic for the beeper, but it becomes the DAC when
   phase 2 does AY via sigma-delta — fit it now and the audio path never changes.
 
-`GPIO[34]` is header pin 39, ground at pin 30 (verified table below), and mind
-pins 11/29, which are 5 V and 3.3 V outputs. Headphones directly off the divider will be
+`GPIO[32]` is header pin 37 (cobbler hole `P26`), and mind pins 11/29, which
+are 5 V and 3.3 V outputs. Headphones directly off the divider will be
 very quiet; powered input is the intended load.
 
 ## PS/2 keyboard wiring (stage 3e)
@@ -273,11 +273,11 @@ row on the breadboard — with a single ground wire to the even side:
 | Joystick down | GPIO[2] | **3** |
 | Joystick left | GPIO[4] | **5** |
 | Joystick right | GPIO[6] | **7** |
-| Joystick fire | GPIO[8] | **9** |
+| Joystick fire | GPIO[10] | **13** |
 | Keyboard 5 V supply | — | **11** |
 | PS/2 clock (via 2.2 kΩ) | GPIO[26] | **31** |
 | PS/2 data (via 2.2 kΩ) | GPIO[28] | **33** |
-| Beeper out | GPIO[34] | **39** |
+| Beeper out | GPIO[32] | **37** |
 | Ground for everything | — | **12** or **30** (even side) |
 
 Read down the odd column: five joystick pins, then 5 V exactly where the
@@ -298,11 +298,11 @@ which are disinformation against the DE10-Lite. Tape over J1 and relabel.
 | 3 | Joystick down | row 2, `P02(SDA1)` |
 | 5 | Joystick left | row 3, `P03(SCL1)` |
 | 7 | Joystick right | row 4, `P04` |
-| 9 | Joystick fire | row 5, `GND` |
+| 13 | Joystick fire | row 7, `P27` |
 | 11 | 5 V → keyboard | row 6, `P17` |
 | 31 | PS/2 clock (2.2 kΩ) | row 16, `P06` |
 | 33 | PS/2 data (2.2 kΩ) | row 17, `P13` |
-| 39 | Beeper | row 20, `GND` |
+| 37 | Beeper | row 19, `P26` |
 
 **Ground** (the only wires on J2): DE10-Lite pins 12 and 30 =
 **J2 row 6 (`P18`)** and **J2 row 15 (`GND`)**. Do NOT use the `GND` at the
@@ -356,3 +356,30 @@ unpowered device, never a host-side fault.
 
 Note: our receive-only host cannot set the lock LEDs, so Caps Lock's LED
 staying dark during use is expected, not a fault.
+
+
+## The cobbler has a ground plane (discovered the fun way)
+
+With nothing connected, the Kempston byte read 0x10 — fire held. Fire was
+header pin 9, whose cobbler hole is labelled GND, and the board ties ALL
+Pi-ground holes (Pi pins 6, 9, 14, 20, 25, 30, 34, 39) into one pour. Since
+DE10-Lite pin 30 is real ground, the entire net is grounded — including five
+FPGA inputs and, until this was caught, the beeper output.
+
+Consequences, while the cobbler is fitted:
+
+- **GPIO[8], [11], [17], [22], [29], [34] (pins 9, 14, 20, 25, 34, 39) are
+  grounded — never assign them as signals.** They stay tri-stated in the top.
+- Joystick fire moved to GPIO[10] (pin 13, hole `P27`); beeper to GPIO[32]
+  (pin 37, hole `P26`).
+- Silver lining: every GND-labelled hole on the cobbler is now genuinely
+  ground (via pin 30), so ground taps are plentiful.
+- The 5 V pour commons GPIO[1] and GPIO[3] (pins 2/4) together — keep them
+  unused. The 3.3 V pour commons GPIO[0] and GPIO[14] (pins 1/17): harmless
+  for joystick-up on pin 1, since GPIO[14] is tri-stated and just rides along.
+- The corner power pins on the cobbler's crossbar connect to those floating
+  pours, NOT to real rails — don't power anything from them.
+
+A plain 1:1 breakout without pours would not have this issue, but the pour
+also isn't worth abandoning the board over: everything fits on the remaining
+pins with room to spare.
