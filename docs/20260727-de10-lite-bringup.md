@@ -232,3 +232,54 @@ Timing quirk found doing that: the ROM's KSTATE machinery refuses to
 re-register a key within ~5 frames of its release — a real Spectrum
 behaviour, not a bug. Double letters ("ll") typed faster than that lose the
 second press. Humans never type that fast; testbenches do.
+
+## GPIO header crib sheet (verified)
+
+From the DE10-Lite manual's Table 3-7 (via UF EEL 3701's pin reference, which
+includes the header photo), cross-checked against the FPGA balls in our qsf.
+Odd pins are one column, even pins the other; pin 1 is marked on the
+silkscreen.
+
+```
+ PIN_V10  GPIO[0]    1 |  2  GPIO[1]   PIN_W10
+ PIN_V9   GPIO[2]    3 |  4  GPIO[3]   PIN_W9
+ PIN_V8   GPIO[4]    5 |  6  GPIO[5]   PIN_W8
+ PIN_V7   GPIO[6]    7 |  8  GPIO[7]   PIN_W7
+ PIN_W6   GPIO[8]    9 | 10  GPIO[9]   PIN_V5
+          ** 5V **  11 | 12  ** GND **
+ PIN_W5   GPIO[10]  13 | 14  GPIO[11]  PIN_AA15
+ PIN_AA14 GPIO[12]  15 | 16  GPIO[13]  PIN_W13
+ PIN_W12  GPIO[14]  17 | 18  GPIO[15]  PIN_AB13
+ PIN_AB12 GPIO[16]  19 | 20  GPIO[17]  PIN_Y11
+ PIN_AB11 GPIO[18]  21 | 22  GPIO[19]  PIN_W11
+ PIN_AB10 GPIO[20]  23 | 24  GPIO[21]  PIN_AA10
+ PIN_AA9  GPIO[22]  25 | 26  GPIO[23]  PIN_Y8
+ PIN_AA8  GPIO[24]  27 | 28  GPIO[25]  PIN_Y7
+          **3.3V**  29 | 30  ** GND **
+ PIN_AA7  GPIO[26]  31 | 32  GPIO[27]  PIN_Y6
+ PIN_AA6  GPIO[28]  33 | 34  GPIO[29]  PIN_Y5
+ PIN_AA5  GPIO[30]  35 | 36  GPIO[31]  PIN_Y4
+ PIN_AB3  GPIO[32]  37 | 38  GPIO[33]  PIN_Y3
+ PIN_AB2  GPIO[34]  39 | 40  GPIO[35]  PIN_AA2
+```
+
+### This project's wiring, by physical pin
+
+| Signal | GPIO | Header pin |
+| --- | --- | --- |
+| Joystick up | GPIO[0] | **1** |
+| Joystick down | GPIO[1] | **2** |
+| Joystick left | GPIO[2] | **3** |
+| Joystick right | GPIO[3] | **4** |
+| Joystick fire | GPIO[4] | **5** |
+| Joystick / PS/2 / beeper ground | — | **12** or **30** |
+| Keyboard 5 V supply | — | **11** |
+| PS/2 clock (via 2.2 kΩ) | GPIO[26] | **31** |
+| PS/2 data (via 2.2 kΩ) | GPIO[27] | **32** |
+| Beeper out | GPIO[35] | **40** |
+
+Hazards, both on the odd/even seam: **pin 11 (5 V) sits directly below pin 9
+(GPIO[8])** — a jumper one position off the joystick block lands on 5 V. And
+pins 29/31 adjoin: 3.3 V next to PS/2 clock. Count from the silkscreened
+pin 1, and remember the bare header has no key — nothing stops a plug landing
+one row off.
