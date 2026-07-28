@@ -85,11 +85,37 @@ module de10_lite_speccy48 (
     wire        ps2_valid;
     wire [39:0] ps2_matrix;
 
+    wire ps2_err;
+
     ps2_rx u_ps2_rx (
         .clk (clk14), .rst (rst),
         .ps2_clk (GPIO[26]), .ps2_data (GPIO[28]),
-        .code (ps2_code), .valid (ps2_valid), .frame_err ()
+        .code (ps2_code), .valid (ps2_valid), .frame_err (ps2_err)
     );
+
+    // ---- PS/2 diagnostics on the 7-segment displays ----------------------
+    // HEX3:HEX2  last scancode received (a live keyboard shows AA at
+    //            power-up -- its BAT self-test result -- before any key)
+    // HEX4       counts raw clock-line edges: moves = wire alive, even if
+    //            frames are garbage
+    // HEX5       frame-error count (parity/framing failures)
+    reg [7:0] ps2_last;
+    reg [3:0] ps2_errs, ps2_act;
+    reg [1:0] act_sync;
+
+    always @(posedge clk14) begin
+        if (rst) begin
+            ps2_last <= 8'h00;
+            ps2_errs <= 4'd0;
+            ps2_act  <= 4'd0;
+            act_sync <= 2'b11;
+        end else begin
+            act_sync <= {act_sync[0], GPIO[26]};
+            if (act_sync[1] != act_sync[0]) ps2_act <= ps2_act + 4'd1;
+            if (ps2_valid) ps2_last <= ps2_code;
+            if (ps2_err)   ps2_errs <= ps2_errs + 4'd1;
+        end
+    end
 
     ps2_keyboard u_ps2_map (
         .clk (clk14), .rst (rst),
@@ -152,10 +178,10 @@ module de10_lite_speccy48 (
 
     assign HEX0 = seg7(kempston[3:0]);
     assign HEX1 = seg7(kempston[7:4]);
-    assign HEX2 = 8'hFF;
-    assign HEX3 = 8'hFF;
-    assign HEX4 = 8'hFF;
-    assign HEX5 = 8'hFF;
+    assign HEX2 = seg7(ps2_last[3:0]);
+    assign HEX3 = seg7(ps2_last[7:4]);
+    assign HEX4 = seg7(ps2_act);
+    assign HEX5 = seg7(ps2_errs);
 
     function [7:0] seg7(input [3:0] v);
         case (v)

@@ -327,3 +327,32 @@ the cobbler end is keyed.
 Identified by continuity, not colour convention (though it happens to match
 it). Keyboard lock-LEDs flashing at power-on = free proof the 5 V path works
 before any key is pressed.
+
+## PS/2 debugging without a scope
+
+The board displays its own diagnosis on the 7-segment displays:
+
+| Display | Shows |
+| --- | --- |
+| HEX3:HEX2 | last scancode received |
+| HEX4 | raw clock-edge counter — spins on ANY line activity |
+| HEX5 | frame-error count |
+
+Interpretation ladder:
+
+1. **Plug in / power-cycle the keyboard.** Its lock-LEDs should flash once
+   (self-test), and HEX3:2 should read **AA** — the BAT completion code every
+   keyboard transmits unprompted ~0.5-0.75 s after power. No key needed.
+2. AA showing → everything works; press A and expect 1C, release adds F0 1C.
+3. HEX4 moving but HEX3:2 dead / HEX5 counting → line is alive but garbled:
+   clock/data swapped (swap the two resistored wires) or bad contact.
+4. Nothing moves anywhere, keyboard LEDs never flash → keyboard has no power
+   or is dead. Check 5 V at the keyboard end. ~4.7 V on the header is normal
+   (USB supply minus a protection diode) and within PS/2 tolerance.
+
+Who drives the clock: **the keyboard, always** — the host only inhibits by
+holding it low. A silent clock line therefore always means a dead or
+unpowered device, never a host-side fault.
+
+Note: our receive-only host cannot set the lock LEDs, so Caps Lock's LED
+staying dark during use is expected, not a fault.
