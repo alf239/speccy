@@ -285,3 +285,32 @@ keyboard needs it, a gap, PS/2 pair, gap, beeper. The remaining hazards:
 **pin 11 is 5 V immediately after the joystick block** — overshoot by one odd
 position and a switch meets 5 V — and **3.3 V (29) adjoins PS/2 clock (31)**.
 Count from the silkscreened pin 1; the header has no key.
+
+## Pi T-cobbler translation (labels are Pi names — they lie)
+
+The breakout is passive and 1:1: J1 = odd header pins 1..39 top-to-bottom,
+J2 = even pins 2..40. But the silkscreen carries Raspberry Pi signal names,
+which are disinformation against the DE10-Lite. Tape over J1 and relabel.
+
+| DE10-Lite pin | Our signal | Cobbler hole (J1 row) says |
+| --- | --- | --- |
+| 1 | Joystick up | row 1, `+3.3V` |
+| 3 | Joystick down | row 2, `P02(SDA1)` |
+| 5 | Joystick left | row 3, `P03(SCL1)` |
+| 7 | Joystick right | row 4, `P04` |
+| 9 | Joystick fire | row 5, `GND` |
+| 11 | 5 V → keyboard | row 6, `P17` |
+| 31 | PS/2 clock (2.2 kΩ) | row 16, `P06` |
+| 33 | PS/2 data (2.2 kΩ) | row 17, `P13` |
+| 39 | Beeper | row 20, `GND` |
+
+**Ground** (the only wires on J2): DE10-Lite pins 12 and 30 =
+**J2 row 6 (`P18`)** and **J2 row 15 (`GND`)**. Do NOT use the `GND` at the
+top of J2 — that is Pi pin 6 = DE10-Lite `GPIO[5]`, a live FPGA I/O.
+(Caught by cross-checking the Terasic manual against the cobbler; the row-15
+label is truthful only because the Pi coincidentally grounds pin 30 too.)
+
+**Orientation proof before wiring anything** (asymmetric, so a reversed
+ribbon cannot fake both): hole `P17` (J1 row 6) reads 5 V and hole `P05`
+(J1 row 15) reads 3.3 V. Wrong readings = flip the ribbon at the board end;
+the cobbler end is keyed.
