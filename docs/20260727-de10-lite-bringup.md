@@ -47,12 +47,12 @@ and wire the connector straight in.
 
 | DE-9 pin | Function | Wire to |
 | --- | --- | --- |
-| 1 | up | `GPIO[0]` |
-| 2 | down | `GPIO[1]` |
-| 3 | left | `GPIO[2]` |
-| 4 | right | `GPIO[3]` |
-| 6 | fire | `GPIO[4]` |
-| 8 | ground | GND |
+| 1 | up | `GPIO[0]` — header pin 1 |
+| 2 | down | `GPIO[2]` — header pin 3 |
+| 3 | left | `GPIO[4]` — header pin 5 |
+| 4 | right | `GPIO[6]` — header pin 7 |
+| 6 | fire | `GPIO[8]` — header pin 9 |
+| 8 | ground | GND — header pin 12 or 30 |
 
 Pin 9 is a second fire button on some sticks; Kempston has no bit for it.
 
@@ -170,7 +170,7 @@ One divider, one cap, into powered speakers or line-in. Values are non-critical
 using their cable. Tip and ring tied together for mono.
 
 ```
-GPIO[35] --[ R1 10k ]--+--[ C2 1uF ]--> tip+ring of 3.5mm jack
+GPIO[34] --[ R1 10k ]--+--[ C2 1uF ]--> tip+ring of 3.5mm jack
                        |
                  [ R2 1k ]    (+ optional C1 10n across R2)
                        |
@@ -184,15 +184,14 @@ GND -------------------+--------------> sleeve
 - C1: ~16 kHz low-pass. Cosmetic for the beeper, but it becomes the DAC when
   phase 2 does AY via sigma-delta — fit it now and the audio path never changes.
 
-`GPIO[35]` should be header pin 40 (corner), ground at pin 30 — **verify against
-the DE10-Lite manual's header table before soldering**, and mind pins 11/29,
-which are 5 V and 3.3 V outputs. Headphones directly off the divider will be
+`GPIO[34]` is header pin 39, ground at pin 30 (verified table below), and mind
+pins 11/29, which are 5 V and 3.3 V outputs. Headphones directly off the divider will be
 very quiet; powered input is the intended load.
 
 ## PS/2 keyboard wiring (stage 3e)
 
-The FPGA side is `GPIO[26]` = clock, `GPIO[27]` = data (header pins 31/32,
-next to the GND at pin 30). Both are receive-only inputs with weak pull-ups
+The FPGA side is `GPIO[26]` = clock, `GPIO[28]` = data (header pins 31/33 —
+both on the odd column, like every other peripheral). Both are receive-only inputs with weak pull-ups
 in the qsf. Three rules:
 
 1. **Power the keyboard from the header's 5 V pin (pin 11)**, ground at 12 or
@@ -265,21 +264,24 @@ silkscreen.
 
 ### This project's wiring, by physical pin
 
+**Everything lives on the odd column** — one physical row on the header, one
+row on the breadboard — with a single ground wire to the even side:
+
 | Signal | GPIO | Header pin |
 | --- | --- | --- |
 | Joystick up | GPIO[0] | **1** |
-| Joystick down | GPIO[1] | **2** |
-| Joystick left | GPIO[2] | **3** |
-| Joystick right | GPIO[3] | **4** |
-| Joystick fire | GPIO[4] | **5** |
-| Joystick / PS/2 / beeper ground | — | **12** or **30** |
+| Joystick down | GPIO[2] | **3** |
+| Joystick left | GPIO[4] | **5** |
+| Joystick right | GPIO[6] | **7** |
+| Joystick fire | GPIO[8] | **9** |
 | Keyboard 5 V supply | — | **11** |
 | PS/2 clock (via 2.2 kΩ) | GPIO[26] | **31** |
-| PS/2 data (via 2.2 kΩ) | GPIO[27] | **32** |
-| Beeper out | GPIO[35] | **40** |
+| PS/2 data (via 2.2 kΩ) | GPIO[28] | **33** |
+| Beeper out | GPIO[34] | **39** |
+| Ground for everything | — | **12** or **30** (even side) |
 
-Hazards, both on the odd/even seam: **pin 11 (5 V) sits directly below pin 9
-(GPIO[8])** — a jumper one position off the joystick block lands on 5 V. And
-pins 29/31 adjoin: 3.3 V next to PS/2 clock. Count from the silkscreened
-pin 1, and remember the bare header has no key — nothing stops a plug landing
-one row off.
+Read down the odd column: five joystick pins, then 5 V exactly where the
+keyboard needs it, a gap, PS/2 pair, gap, beeper. The remaining hazards:
+**pin 11 is 5 V immediately after the joystick block** — overshoot by one odd
+position and a switch meets 5 V — and **3.3 V (29) adjoins PS/2 clock (31)**.
+Count from the silkscreened pin 1; the header has no key.

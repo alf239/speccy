@@ -8,12 +8,18 @@
 //   KEY[0]     reset (hold)
 //   LEDR[4:0]  joystick     LEDR[7:5] border     LEDR[8] PLL lock
 //   LEDR[9]    heartbeat    HEX1/HEX0 Kempston port byte
-//   GPIO[4:0]  joystick in  GPIO[35]  beeper out (RC filter -> 3.5mm jack)
-//   GPIO[26]   PS/2 clock   GPIO[27]  PS/2 data   (header pins 31/32; wire
-//              each through a 2.2k series resistor -- the keyboard is a 5V
-//              device and MAX 10 is not 5V tolerant; the resistor limits the
-//              clamp-diode current to a safe fraction of a milliamp. Power
-//              the keyboard from the header's 5V pin, not 3.3V.)
+//
+// All peripheral signals sit on the ODD column of the header, so the whole
+// machine wires along one physical row (plus one ground wire to pin 12/30):
+//
+//   header  1  3  5  7  9   GPIO[0,2,4,6,8]   joystick U D L R F
+//   header 11                                 5V for the keyboard
+//   header 31 33             GPIO[26,28]      PS/2 clock, data
+//   header 39                GPIO[34]         beeper out (RC -> 3.5mm jack)
+//
+// PS/2 lines go through 2.2k series resistors -- the keyboard is a 5V device
+// and MAX 10 is not 5V tolerant; the resistor limits clamp-diode current to
+// a safe fraction of a milliamp. Power the keyboard from 5V, not 3.3V.
 // ---------------------------------------------------------------------------
 
 `default_nettype none
@@ -66,9 +72,10 @@ module de10_lite_speccy48 (
     // -----------------------------------------------------------------------
     wire speaker;
 
-    assign GPIO[34:5] = 30'bz;         // includes PS/2 pins: never driven
-    assign GPIO[4:0]  = 5'bz;              // inputs (weak pull-ups in the qsf)
-    assign GPIO[35]   = speaker;
+    // Everything is an input except the beeper. (Even-column pins unused.)
+    assign GPIO[33:0] = 34'bz;
+    assign GPIO[35]   = 1'bz;
+    assign GPIO[34]   = speaker;
 
     wire [4:0] joy_state;
     wire [7:0] kempston;
@@ -80,7 +87,7 @@ module de10_lite_speccy48 (
 
     ps2_rx u_ps2_rx (
         .clk (clk14), .rst (rst),
-        .ps2_clk (GPIO[26]), .ps2_data (GPIO[27]),
+        .ps2_clk (GPIO[26]), .ps2_data (GPIO[28]),
         .code (ps2_code), .valid (ps2_valid), .frame_err ()
     );
 
@@ -93,7 +100,8 @@ module de10_lite_speccy48 (
     joystick #(.DEBOUNCE_CYCLES(14000)) u_joystick (
         .clk      (clk14),
         .rst      (rst),
-        .pin_n    (GPIO[4:0]),
+        // odd header column: {fire,right,left,down,up} = pins 9,7,5,3,1
+        .pin_n    ({GPIO[8], GPIO[6], GPIO[4], GPIO[2], GPIO[0]}),
         .state    (joy_state),
         .kempston (kempston)
     );

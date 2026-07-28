@@ -167,13 +167,12 @@ set_location_assignment PIN_N19 -to HEX5[5]
 set_location_assignment PIN_N20 -to HEX5[6]
 set_location_assignment PIN_L19 -to HEX5[7]
 
-# Joystick inputs: passive switches to ground, so the pull-ups ARE the interface.
+# All peripherals sit on the odd header column (GPIO[0,2,4,6,8] joystick,
+# GPIO[26,28] PS/2). Passive switches to ground, so pull-ups ARE the interface.
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[0]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[1]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[2]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[3]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[4]
-
-# PS/2 keyboard: clock and data, receive-only.
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[6]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[8]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[26]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[27]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[28]

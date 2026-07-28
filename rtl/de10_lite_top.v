@@ -94,7 +94,8 @@ module de10_lite_top (
     joystick #(.DEBOUNCE_CYCLES(14000)) u_joystick (   // ~1 ms at 14 MHz
         .clk      (clk14),
         .rst      (rst),
-        .pin_n    (GPIO[4:0]),
+        // odd header column: {fire,right,left,down,up} = pins 9,7,5,3,1
+        .pin_n    ({GPIO[8], GPIO[6], GPIO[4], GPIO[2], GPIO[0]}),
         .state    (joy_state),
         .kempston (kempston)
     );
