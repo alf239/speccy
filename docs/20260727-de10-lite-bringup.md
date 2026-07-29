@@ -423,3 +423,14 @@ Fix: the snapshot lives twice. The main banks get it at configuration; a
 never-written shadow pair keeps it pristine, and an armed reset holds the CPU
 for ~7 ms while a copier refills all 48K from the shadow. SW[1]+KEY[0] now
 boots the game every time — which a game about dying frequently requires.
+
+### Piezo option (as built, 2026-07-29)
+
+A piezo buzzer on the divider is quiet -- it is a capacitive load being fed
+the attenuated line-level signal. Drive it directly instead:
+
+    hole "P26" (pin 37) --[ 47R ]-- piezo --- GND
+
+Full-swing 3.3 V, ~20 dB louder than via the divider. The divider + 1 uF
+stays in place for powered speakers / the phase-2 AY path. Expect the piezo
+to colour the sound around its resonance -- authentic enough for a beeper.
