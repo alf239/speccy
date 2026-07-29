@@ -147,6 +147,7 @@ snaptest: $(BOOT_EXE) sim/cpu_rom.hex
 	python3 tools/snap2hex.py out/test.z80 out
 	cp sim/cpu_rom.hex out/bootrom.hex
 	./$(BOOT_EXE) --frames 8 --expect-snap --out out/snap_test.bmp
+	./$(BOOT_EXE) --frames 8 --snap-at 2 --expect-snap --out out/snap_rearm.bmp
 
 # Boot a real snapshot:  make snap SNAP=game.z80 ROM=48.rom [FRAMES=n]
 snap: $(BOOT_EXE)

@@ -410,3 +410,16 @@ Format notes: .z80 v1/v2/v3, 48K only, compressed or not. TAP/TZX are tape
 *recordings* — they need the divMMC (stage 5) or an EAR-line player; the
 snapshot path sidesteps both. A game change is a recompile (~3 min) until
 stage 5 makes it an SD-card file copy.
+
+### Snapshot re-boot: why it needs the shadow copier
+
+Block RAM initialization happens at FPGA **configuration**, not at reset. The
+first design relied on init alone, so the snapshot booted only on the first
+reset after programming — any later SW[1]+KEY[0] resumed the snapshot's
+*registers* over whatever RAM held by then (symptom: your old BASIC screen,
+frozen in the resumed PAUSE loop).
+
+Fix: the snapshot lives twice. The main banks get it at configuration; a
+never-written shadow pair keeps it pristine, and an armed reset holds the CPU
+for ~7 ms while a copier refills all 48K from the shadow. SW[1]+KEY[0] now
+boots the game every time — which a game about dying frequently requires.

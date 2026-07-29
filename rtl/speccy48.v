@@ -33,6 +33,7 @@ module speccy48 #(
 );
 
     wire        ce_cpu;
+    wire        boot_busy;
     wire [15:0] cpu_a;
     wire [7:0]  cpu_do, cpu_di;
     wire        mreq_n, iorq_n, rd_n, wr_n, m1_n, int_n;
@@ -43,7 +44,9 @@ module speccy48 #(
     tv80s #(.Mode(0), .T2Write(1), .IOWait(1)) u_cpu (
         .clk     (clk),
         .cen     (ce_cpu),
-        .reset_n (~rst),
+        // Held in reset while the boot copier refills RAM from the snapshot
+        // shadow (~7 ms); the video side keeps running.
+        .reset_n (~(rst | boot_busy)),
         .wait_n  (1'b1),      // Pentagon timing: nothing ever inserts waits
         .int_n   (int_n),
         .nmi_n   (1'b1),
@@ -66,6 +69,7 @@ module speccy48 #(
         .clk          (clk),
         .rst          (rst),
         .arm_snapshot (arm_snapshot),
+        .boot_busy    (boot_busy),
         .ce_cpu     (ce_cpu),
         .ce_pix     (),
         .cpu_a      (cpu_a),

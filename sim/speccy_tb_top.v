@@ -28,7 +28,7 @@ module speccy_tb_top (
 );
 
     speccy #(.ROM_FILE("sim/test_rom.hex")) u_speccy (
-        .clk (clk), .rst (rst), .arm_snapshot (1'b0),
+        .clk (clk), .rst (rst), .arm_snapshot (1'b0), .boot_busy (),
         .ce_cpu (ce_cpu), .ce_pix (ce_pix),
         .cpu_a (cpu_a), .cpu_do (cpu_do), .cpu_di (cpu_di),
         .mreq_n (mreq_n), .iorq_n (iorq_n), .rd_n (rd_n), .wr_n (wr_n),

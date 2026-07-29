@@ -149,6 +149,7 @@ int main(int argc, char** argv) {
     std::string type_str;
     int type_at = 120;
     bool snap = false, expect_snap = false;
+    int  snap_at = -1;                 // re-arm + reset at this frame
 
     for (int i = 1; i < argc; i++) {
         if      (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
@@ -157,6 +158,7 @@ int main(int argc, char** argv) {
         else if (!strcmp(argv[i], "--type-at")&& i + 1 < argc) type_at = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--all"))                    all = true;
         else if (!strcmp(argv[i], "--snap"))                   snap = true;
+        else if (!strcmp(argv[i], "--snap-at") && i + 1 < argc) snap_at = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--expect-snap"))            { snap = true; expect_snap = true; }
         else if (!strcmp(argv[i], "--expect-smoke"))           expect_smoke = true;
     }
@@ -211,6 +213,16 @@ int main(int argc, char** argv) {
                     write_bmp(path, fb.data(), W, H);
                 }
                 frame_no++;
+                if (frame_no == snap_at) {
+                    // The bug this guards: block RAM init is configuration-
+                    // time only, so an armed reset must REFILL RAM from the
+                    // shadow, not resume registers over stale memory.
+                    printf("  re-arming snapshot + reset at frame %d\n", frame_no);
+                    top.arm_snapshot = 1;
+                    top.rst = 1;
+                    for (int k = 0; k < 16; k++) { top.clk = 0; top.eval(); top.clk = 1; top.eval(); }
+                    top.rst = 0;
+                }
                 if (!type_str.empty() && frame_no == type_at) {
                     typing_started = true;
                     printf("  typing \"%s\" from frame %d\n", type_str.c_str(), type_at);

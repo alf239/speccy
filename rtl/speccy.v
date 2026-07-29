@@ -47,6 +47,12 @@ module speccy #(
     // stub's final JP into the snapshot's PC). Tie low for a normal boot.
     input  wire        arm_snapshot,
 
+    // High while the boot copier is refilling RAM from the snapshot shadow.
+    // The CPU must be held in reset while this is set -- block RAM init only
+    // happens at CONFIGURATION, so without the copy a second armed reset
+    // would resume the snapshot's registers over whatever RAM holds now.
+    output wire        boot_busy,
+
     output wire        ce_cpu,       // 3.5 MHz
     output wire        ce_pix,       // 7 MHz
 
@@ -101,20 +107,38 @@ module speccy #(
         .clk (clk), .addr (cpu_a[13:0]), .din (8'd0), .we (1'b0), .dout (rom_q)
     );
 
-    // The 0x4000 bank needs two ports: CPU on one, video on the other.
+    // Boot copier signals (driven by the snapshot logic below; idle when the
+    // machine has no snapshot support).
+    wire        copying;
+    wire [15:0] caddr;       // 0..49151 over the copy
+    wire        cwrite;      // write strobe, data valid on sh_*_q
+    wire [7:0]  sh_lo_q, sh_hi_q;
+
+    assign boot_busy = copying;
+
+    // The 0x4000 bank needs two ports: CPU on one, video on the other. The
+    // boot copier borrows the CPU port while the CPU is held in reset.
     vram #(.ADDR_W(14), .INIT_FILE(VRAM_FILE)) u_vram (
         .clk    (clk),
-        .a_addr (cpu_a[13:0]),
-        .a_din  (cpu_do),
-        .a_we   (mem_wr && (cpu_a[15:14] == 2'b01)),
+        .a_addr (copying ? caddr[13:0] : cpu_a[13:0]),
+        .a_din  (copying ? sh_lo_q : cpu_do),
+        .a_we   (copying ? (cwrite && !caddr[15] && !caddr[14])
+                         : (mem_wr && (cpu_a[15:14] == 2'b01))),
         .a_dout (vram_q),
         .b_addr (video_addr),
         .b_dout (video_data)
     );
 
+    // Modulo-32K arithmetic makes the top bit irrelevant.
+    wire [14:0] caddr_hi = caddr[14:0] - 15'd16384;
+
     ram #(.ADDR_W(15), .INIT_FILE(RAM_FILE)) u_ramhi (
-        .clk (clk), .addr (cpu_a[14:0]), .din (cpu_do),
-        .we (mem_wr && cpu_a[15]), .dout (ramhi_q)
+        .clk  (clk),
+        .addr (copying ? caddr_hi : cpu_a[14:0]),
+        .din  (copying ? sh_hi_q : cpu_do),
+        .we   (copying ? (cwrite && (caddr[15] || caddr[14]))
+                       : (mem_wr && cpu_a[15])),
+        .dout (ramhi_q)
     );
 
     // -----------------------------------------------------------------------
@@ -141,8 +165,49 @@ module speccy #(
                 .clk (clk), .addr (cpu_a[7:0]), .din (8'd0),
                 .we (1'b0), .dout (stub_q)
             );
+
+            // Shadow copies of the snapshot RAM. Same init files as the main
+            // banks (so the very first configuration boots even without a
+            // copy), but never written -- the pristine snapshot, kept.
+            ram #(.ADDR_W(14), .INIT_FILE(VRAM_FILE)) u_shadow_lo (
+                .clk (clk), .addr (caddr[13:0]), .din (8'd0),
+                .we (1'b0), .dout (sh_lo_q)
+            );
+            ram #(.ADDR_W(15), .INIT_FILE(RAM_FILE)) u_shadow_hi (
+                .clk (clk), .addr (caddr_hi[14:0]), .din (8'd0),
+                .we (1'b0), .dout (sh_hi_q)
+            );
+
+            // Two clocks per byte (read shadow, then write main): 48K in
+            // ~7 ms at 14 MHz, done during what looks like a long reset.
+            reg        copy_r;
+            reg        cphase;              // 0: shadow read, 1: main write
+            reg [15:0] ctr;
+
+            always @(posedge clk) begin
+                if (rst) begin
+                    copy_r <= arm_snapshot;
+                    cphase <= 1'b0;
+                    ctr    <= 16'd0;
+                end else if (copy_r) begin
+                    cphase <= ~cphase;
+                    if (cphase) begin
+                        if (ctr == 16'd49151) copy_r <= 1'b0;
+                        ctr <= ctr + 16'd1;
+                    end
+                end
+            end
+
+            assign copying = copy_r;
+            assign caddr   = ctr;
+            assign cwrite  = copy_r && cphase;
         end else begin : g_no_overlay
-            assign stub_q = 8'h00;
+            assign stub_q  = 8'h00;
+            assign copying = 1'b0;
+            assign caddr   = 16'd0;
+            assign cwrite  = 1'b0;
+            assign sh_lo_q = 8'h00;
+            assign sh_hi_q = 8'h00;
         end
     endgenerate
 
