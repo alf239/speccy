@@ -18,6 +18,12 @@ set_global_assignment -name NUM_PARALLEL_PROCESSORS ALL
 
 # Unused pins high-Z, and the whole bank is 3.3V.
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_WEAK_PULLUP "AS INPUT TRI-STATED"
+
+# MAX 10 internal configuration MUST include memory initialization ("ERAM"),
+# or no $readmemh RAM can be inferred at all -- every initialised memory
+# fails with 276013 "MIF is not supported for the selected family" and
+# synthesis dies at 276003. This setting is why; never remove it.
+set_global_assignment -name INTERNAL_FLASH_UPDATE_MODE "SINGLE IMAGE WITH ERAM"
 set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
 
 # ---- RTL ------------------------------------------------------------------
