@@ -395,9 +395,16 @@ Simulation:  `make snap SNAP=game.z80 ROM=48.rom [FRAMES=n]` → out/snap.bmp
 Hardware:    `python3 tools/snap2hex.py game.z80 quartus/` then recompile;
              SW[1] up + KEY[0] = boot into the game, SW[1] down = BASIC.
 
-Menu driving until the keyboard arrives — autokey switches (flip up to hold
-the key, down to release): SW[2]=ENTER, SW[3]=SPACE, SW[4]="1", SW[5]="2".
-Kempston works as usual once in-game.
+Menu driving until the keyboard arrives:
+
+- **Held keys** (up = held, down = released): SW[2]=ENTER, SW[3]=SPACE,
+  SW[4]="1", SW[5]="2"
+- **Tap keys** (flip UP = one ~80 ms press, flip down again to re-arm):
+  SW[6]="J", SW[7]="S"
+
+Kempston works as usual once in-game. The full switch map is now:
+SW[0] free · SW[1] snapshot boot · SW[5:2] held keys · SW[7:6] tap keys ·
+SW[8] reserved (AY/YM, phase 2) · SW[9] sync polarity.
 
 Format notes: .z80 v1/v2/v3, 48K only, compressed or not. TAP/TZX are tape
 *recordings* — they need the divMMC (stage 5) or an EAR-line player; the

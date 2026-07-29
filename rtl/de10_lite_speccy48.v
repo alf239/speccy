@@ -10,6 +10,8 @@
 //              OFF + reset = normal BASIC boot
 //   SW[5:2]    autokey: hold matrix keys ENTER / SPACE / 1 / 2 while up --
 //              enough to drive most game menus until the keyboard arrives
+//   SW[6]      tap-key J, SW[7] tap-key S: flipping UP delivers one ~80 ms
+//              keypress then releases; flip down to re-arm (menu letters)
 //   KEY[0]     reset (hold)
 //   LEDR[4:0]  joystick     LEDR[7:5] border     LEDR[8] PLL lock
 //   LEDR[9]    heartbeat    HEX1/HEX0 Kempston port byte
@@ -153,11 +155,19 @@ module de10_lite_speccy48 (
     wire       mic;
 
     // Autokey: a few menu keys on switches, OR-ed into the matrix.
+    // SW[5:2] are level-held keys; SW[7:6] are edge-triggered single taps.
+    wire key_j, key_s;
+
+    key_tap u_key_j (.clk (clk14), .rst (rst), .sw (SW[6]), .pressed (key_j));
+    key_tap u_key_s (.clk (clk14), .rst (rst), .sw (SW[7]), .pressed (key_s));
+
     wire [39:0] autokey;
     assign autokey = ({39'd0, SW[2]} << 30)    // ENTER
                    | ({39'd0, SW[3]} << 35)    // SPACE
                    | ({39'd0, SW[4]} << 15)    // 1
-                   | ({39'd0, SW[5]} << 16);   // 2
+                   | ({39'd0, SW[5]} << 16)    // 2
+                   | ({39'd0, key_j} << 33)    // J   (row A14, key 3)
+                   | ({39'd0, key_s} << 6);    // S   (row A9,  key 1)
 
     speccy48 #(.ROM_FILE("rom48.hex"), .VRAM_FILE("snap_vram.hex"),
                .RAM_FILE("snap_ram.hex"), .STUB_FILE("snap_stub.hex")) u_speccy (
