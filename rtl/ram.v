@@ -21,7 +21,11 @@ module ram #(
     output reg  [7:0]          dout
 );
 
-    reg [7:0] mem [0:(1<<ADDR_W)-1];
+    // ramstyle: without it, Quartus implements small arrays (the 256-byte
+    // snapshot stub) as logic-cell registers, which cannot take an init file
+    // on MAX 10 -- synthesis then fails with "MIF is not supported" (276013)
+    // and a register-count blowout (276003). M9K is what we want anyway.
+    (* ramstyle = "M9K" *) reg [7:0] mem [0:(1<<ADDR_W)-1];
 
     generate
         if (INIT_FILE != "") begin : g_init
