@@ -33,8 +33,9 @@ module speccy48_tb_top (
 );
 
     speccy48 #(.ROM_FILE("sim/cpu_rom.hex")) u_ss (
-        .clk        (clk),
-        .rst        (rst),
+        .clk          (clk),
+        .rst          (rst),
+        .arm_snapshot (1'b0),
         .key_matrix (key_matrix),
         .joy_state  (joy_state),
         .ear_in     (ear_in),

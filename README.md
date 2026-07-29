@@ -19,6 +19,11 @@ Nothing outside the FPGA design produced that image — CPU, ULA-equivalent, RAM
 test, character rendering, scandoubler, sync. (`make boot ROM=path/to/48.rom`;
 the ROM itself is not in this repo.)
 
+And via the snapshot loader, the goal itself — Saboteur II resumed from a
+`.z80` snapshot by a generated 60-byte bootstrap, no keys pressed:
+
+![](docs/img/saboteur2.png)
+
 The raster below is the earlier stage-0 view of the same video chain — the full
 448×312 frame including blanking. The picture sits top-left because `hc=0` is the
 first *displayed* pixel, so the left and top borders land at the far right and
@@ -151,8 +156,11 @@ software) doing the filesystem work. Roughly 500 LE instead of a WD1793 emulatio
   `10 P"hello"` / `R` into the real ROM over simulated PS/2 traffic and BASIC
   runs it (`make boot ROM=48.rom TYPE='...'`)
 - [ ] **3f** — the physical keyboard (wiring: see the bring-up doc)
+- [x] **3g** — snapshot loader: `.z80` → block RAM + a generated register-restore
+  stub served from a boot overlay. `make snap SNAP=game.z80 ROM=48.rom` boots it
+  in simulation; on hardware, SW[1] + reset boots straight into the game
 - [ ] **4** — beeper
-- [ ] **5** — divMMC + SD card → **Saboteur II**
+- [ ] **5** — divMMC + SD card → **Saboteur II from SD, no recompile**
 
 Phase 2, if it stays interesting: SDRAM, 128K paging, AY, and eventually the
 Scorpion's extended paging, 7 MHz turbo and that excellent ROM-resident debugger.

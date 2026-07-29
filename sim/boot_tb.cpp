@@ -148,6 +148,7 @@ int main(int argc, char** argv) {
 
     std::string type_str;
     int type_at = 120;
+    bool snap = false, expect_snap = false;
 
     for (int i = 1; i < argc; i++) {
         if      (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
@@ -155,6 +156,8 @@ int main(int argc, char** argv) {
         else if (!strcmp(argv[i], "--type")   && i + 1 < argc) type_str = argv[++i];
         else if (!strcmp(argv[i], "--type-at")&& i + 1 < argc) type_at = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--all"))                    all = true;
+        else if (!strcmp(argv[i], "--snap"))                   snap = true;
+        else if (!strcmp(argv[i], "--expect-snap"))            { snap = true; expect_snap = true; }
         else if (!strcmp(argv[i], "--expect-smoke"))           expect_smoke = true;
     }
 
@@ -164,6 +167,7 @@ int main(int argc, char** argv) {
 
     top.rst = 1; top.key_matrix = 0; top.joy_state = 0; top.ear_in = 1;
     top.ps2_clk = 1; top.ps2_data = 1;
+    top.arm_snapshot = snap ? 1 : 0;
     for (int i = 0; i < 16; i++) { top.clk = 0; top.eval(); top.clk = 1; top.eval(); }
     top.rst = 0;
 
@@ -238,6 +242,21 @@ int main(int argc, char** argv) {
     if (lines_last_frame != 624) {
         fprintf(stderr, "FAIL: %ld lines in the last frame, expected 624\n", lines_last_frame);
         failures++;
+    }
+
+    if (expect_snap) {
+        // The synthetic snapshot's stub sets border 5; its program then sets
+        // border 2, writes HL=0xAAAA to 0x4000 (bright white ink there via
+        // the snapshot's attribute byte) and loops. Border 2 alone proves the
+        // full chain: overlay served, registers restored, JP taken, program
+        // running from snapshot RAM.
+        long white = 0;
+        for (size_t i = 0; i < fb.size(); i += 3)
+            if (fb[i] == 255 && fb[i+1] == 255 && fb[i+2] == 255) white++;
+        printf("snap check: border=%d (expect 2), %ld bright-white pixels (expect >=16)\n",
+               top.border, white);
+        if (top.border != 2) { fprintf(stderr, "FAIL: border %d\n", top.border); failures++; }
+        if (white < 16)      { fprintf(stderr, "FAIL: snapshot bitmap not visible\n"); failures++; }
     }
 
     if (expect_smoke) {

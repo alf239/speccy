@@ -102,9 +102,19 @@ $(BOOT_EXE): $(BOOT_RTL) sim/boot_tb.cpp
 	  --Mdir $(BOOT_MDIR) -o boot_tb \
 	  -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY \
 	  -GROM_FILE='"out/bootrom.hex"' \
+	  -GVRAM_FILE='"out/snap_vram.hex"' \
+	  -GRAM_FILE='"out/snap_ram.hex"' \
+	  -GSTUB_FILE='"out/snap_stub.hex"' \
 	  tv80.vlt $(BOOT_RTL) sim/boot_tb.cpp
 
-boottest: $(BOOT_EXE) sim/cpu_rom.hex
+# Placeholder snapshot files so non-snapshot runs stay warning-free.
+out/snap_stub.hex:
+	@mkdir -p out
+	@python3 -c "print('00\n'*256, end='')"   > out/snap_stub.hex
+	@python3 -c "print('00\n'*16384, end='')" > out/snap_vram.hex
+	@python3 -c "print('00\n'*32768, end='')" > out/snap_ram.hex
+
+boottest: $(BOOT_EXE) sim/cpu_rom.hex out/snap_stub.hex
 	@mkdir -p out
 	cp sim/cpu_rom.hex out/bootrom.hex
 	./$(BOOT_EXE) --frames 8 --expect-smoke --out out/boot_smoke.bmp
@@ -129,8 +139,26 @@ $(PS2_EXE): rtl/ps2_rx.v rtl/ps2_keyboard.v sim/ps2_tb_top.v sim/ps2_tb.cpp
 ps2test: $(PS2_EXE)
 	./$(PS2_EXE)
 
+# Snapshot regression: synthetic .z80 through snap2hex, booted via the
+# overlay, checked on the virtual monitor. No copyrighted bytes involved.
+snaptest: $(BOOT_EXE) sim/cpu_rom.hex
+	@mkdir -p out
+	python3 tools/make_test_snap.py out/test.z80
+	python3 tools/snap2hex.py out/test.z80 out
+	cp sim/cpu_rom.hex out/bootrom.hex
+	./$(BOOT_EXE) --frames 8 --expect-snap --out out/snap_test.bmp
+
+# Boot a real snapshot:  make snap SNAP=game.z80 ROM=48.rom [FRAMES=n]
+snap: $(BOOT_EXE)
+	@test -n "$(SNAP)" -a -n "$(ROM)" || { echo "usage: make snap SNAP=game.z80 ROM=48.rom [FRAMES=n]"; exit 1; }
+	@mkdir -p out
+	python3 tools/snap2hex.py $(SNAP) out
+	python3 tools/bin2hex.py $(ROM) out/bootrom.hex
+	./$(BOOT_EXE) --snap --frames $(or $(FRAMES),16) --out out/snap.bmp
+	@echo "wrote out/snap.bmp"
+
 # Everything that can be checked without hardware.
-test: run joytest bustest cputest boottest ps2test
+test: run joytest bustest cputest boottest ps2test snaptest
 
 lint:
 	$(VERILATOR) --lint-only --top-module $(TOP) -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY $(RTL)
@@ -138,4 +166,4 @@ lint:
 clean:
 	rm -rf $(MDIR) $(JOY_MDIR) $(BUS_MDIR) $(CPU_MDIR) $(BOOT_MDIR) $(PS2_MDIR) out sim/test_rom.hex sim/cpu_rom.hex
 
-.PHONY: all run open lint clean joytest bustest cputest boottest boot ps2test test
+.PHONY: all run open lint clean joytest bustest cputest boottest boot ps2test snaptest snap test

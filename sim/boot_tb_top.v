@@ -5,10 +5,14 @@
 `default_nettype none
 
 module boot_tb_top #(
-    parameter ROM_FILE = "sim/cpu_rom.hex"
+    parameter ROM_FILE  = "sim/cpu_rom.hex",
+    parameter VRAM_FILE = "",
+    parameter RAM_FILE  = "",
+    parameter STUB_FILE = ""
 )(
     input  wire        clk,
     input  wire        rst,
+    input  wire        arm_snapshot,
 
     input  wire [39:0] key_matrix,   // OR-ed with the PS/2-derived matrix
     input  wire        ps2_clk,
@@ -44,9 +48,11 @@ module boot_tb_top #(
         .key_matrix (ps2_matrix)
     );
 
-    speccy48 #(.ROM_FILE(ROM_FILE)) u_ss (
-        .clk        (clk),
-        .rst        (rst),
+    speccy48 #(.ROM_FILE(ROM_FILE), .VRAM_FILE(VRAM_FILE),
+               .RAM_FILE(RAM_FILE), .STUB_FILE(STUB_FILE)) u_ss (
+        .clk          (clk),
+        .rst          (rst),
+        .arm_snapshot (arm_snapshot),
         .key_matrix (key_matrix | ps2_matrix),
         .joy_state  (joy_state),
         .ear_in     (ear_in),

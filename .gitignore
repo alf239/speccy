@@ -11,3 +11,8 @@ quartus/rom48.hex
 quartus/output_files/
 quartus/db/
 quartus/incremental_db/
+*.z80
+*.Z80
+*.tap
+*.tzx
+*.sna

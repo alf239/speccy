@@ -30,6 +30,8 @@
 module speccy #(
     parameter ROM_FILE   = "",
     parameter VRAM_FILE  = "",
+    parameter RAM_FILE   = "",     // upper 32K init (snapshot loading)
+    parameter STUB_FILE  = "",     // 256-byte snapshot boot overlay
     // Interrupt: 32 T-states long on a 48K, asserted once per frame. The line
     // it starts on decides where "raster line 0" sits for timing-sensitive
     // code; the start of vertical blanking is a reasonable default and this is
@@ -39,6 +41,11 @@ module speccy #(
 )(
     input  wire        clk,          // 14 MHz
     input  wire        rst,
+
+    // Sampled during reset: arm the snapshot overlay, which serves the stub
+    // at 0x0000-0x00FF until the first opcode fetch at or above 0x0100 (the
+    // stub's final JP into the snapshot's PC). Tie low for a normal boot.
+    input  wire        arm_snapshot,
 
     output wire        ce_cpu,       // 3.5 MHz
     output wire        ce_pix,       // 7 MHz
@@ -105,18 +112,52 @@ module speccy #(
         .b_dout (video_data)
     );
 
-    ram #(.ADDR_W(15)) u_ramhi (
+    ram #(.ADDR_W(15), .INIT_FILE(RAM_FILE)) u_ramhi (
         .clk (clk), .addr (cpu_a[14:0]), .din (cpu_do),
         .we (mem_wr && cpu_a[15]), .dout (ramhi_q)
     );
 
+    // -----------------------------------------------------------------------
+    // Snapshot boot overlay: a 256-byte ROM shadowing 0x0000-0x00FF while
+    // armed. Armed state is loaded during reset and cleared forever by the
+    // first opcode fetch outside the stub -- which is the stub's own JP into
+    // the game. From then on the real ROM is back.
+    // -----------------------------------------------------------------------
+    localparam HAS_STUB = (STUB_FILE != "");
+
+    wire [7:0] stub_q;
+    reg        overlay_armed;
+
+    always @(posedge clk) begin
+        if (rst)
+            overlay_armed <= HAS_STUB ? arm_snapshot : 1'b0;
+        else if (mem_rd && !m1_n && (cpu_a >= 16'h0100))
+            overlay_armed <= 1'b0;
+    end
+
+    generate
+        if (HAS_STUB) begin : g_overlay
+            ram #(.ADDR_W(8), .INIT_FILE(STUB_FILE)) u_stub (
+                .clk (clk), .addr (cpu_a[7:0]), .din (8'd0),
+                .we (1'b0), .dout (stub_q)
+            );
+        end else begin : g_no_overlay
+            assign stub_q = 8'h00;
+        end
+    endgenerate
+
     // The RAMs register their outputs, so the bank select has to be delayed to
     // match or the mux picks the wrong one.
     reg [1:0] rd_bank;
-    always @(posedge clk) rd_bank <= cpu_a[15:14];
+    reg       rd_stub;
+    always @(posedge clk) begin
+        rd_bank <= cpu_a[15:14];
+        rd_stub <= overlay_armed && (cpu_a[15:8] == 8'h00);
+    end
 
-    wire [7:0] mem_data = (rd_bank == 2'b00) ? rom_q   :
-                          (rd_bank == 2'b01) ? vram_q  : ramhi_q;
+    wire [7:0] mem_data = rd_stub             ? stub_q  :
+                          (rd_bank == 2'b00)  ? rom_q   :
+                          (rd_bank == 2'b01)  ? vram_q  : ramhi_q;
 
     // -----------------------------------------------------------------------
     // Ports

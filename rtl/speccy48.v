@@ -9,10 +9,13 @@
 
 module speccy48 #(
     parameter ROM_FILE  = "",
-    parameter VRAM_FILE = ""
+    parameter VRAM_FILE = "",
+    parameter RAM_FILE  = "",
+    parameter STUB_FILE = ""
 )(
     input  wire        clk,          // 14 MHz
     input  wire        rst,
+    input  wire        arm_snapshot, // sampled at reset; tie low for normal boot
 
     input  wire [39:0] key_matrix,
     input  wire [4:0]  joy_state,
@@ -58,9 +61,11 @@ module speccy48 #(
         .dout    (cpu_do)
     );
 
-    speccy #(.ROM_FILE(ROM_FILE), .VRAM_FILE(VRAM_FILE)) u_machine (
-        .clk        (clk),
-        .rst        (rst),
+    speccy #(.ROM_FILE(ROM_FILE), .VRAM_FILE(VRAM_FILE),
+             .RAM_FILE(RAM_FILE), .STUB_FILE(STUB_FILE)) u_machine (
+        .clk          (clk),
+        .rst          (rst),
+        .arm_snapshot (arm_snapshot),
         .ce_cpu     (ce_cpu),
         .ce_pix     (),
         .cpu_a      (cpu_a),

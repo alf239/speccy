@@ -5,6 +5,11 @@
 // ROM that means BASIC to the (c) 1982 message with nothing plugged in.
 //
 //   SW[9]      sync polarity (flip if the monitor won't lock)
+//   SW[1]      snapshot mode: ON + reset = boot straight into the snapshot
+//              baked in via snap_{stub,vram,ram}.hex (tools/snap2hex.py);
+//              OFF + reset = normal BASIC boot
+//   SW[5:2]    autokey: hold matrix keys ENTER / SPACE / 1 / 2 while up --
+//              enough to drive most game menus until the keyboard arrives
 //   KEY[0]     reset (hold)
 //   LEDR[4:0]  joystick     LEDR[7:5] border     LEDR[8] PLL lock
 //   LEDR[9]    heartbeat    HEX1/HEX0 Kempston port byte
@@ -147,10 +152,19 @@ module de10_lite_speccy48 (
     wire [2:0] border;
     wire       mic;
 
-    speccy48 #(.ROM_FILE("rom48.hex")) u_speccy (
-        .clk        (clk14),
-        .rst        (rst),
-        .key_matrix (ps2_matrix),
+    // Autokey: a few menu keys on switches, OR-ed into the matrix.
+    wire [39:0] autokey;
+    assign autokey = ({39'd0, SW[2]} << 30)    // ENTER
+                   | ({39'd0, SW[3]} << 35)    // SPACE
+                   | ({39'd0, SW[4]} << 15)    // 1
+                   | ({39'd0, SW[5]} << 16);   // 2
+
+    speccy48 #(.ROM_FILE("rom48.hex"), .VRAM_FILE("snap_vram.hex"),
+               .RAM_FILE("snap_ram.hex"), .STUB_FILE("snap_stub.hex")) u_speccy (
+        .clk          (clk14),
+        .rst          (rst),
+        .arm_snapshot (SW[1]),
+        .key_matrix (ps2_matrix | autokey),
         .joy_state  (joy_state),
         .ear_in     (1'b1),
         .speaker    (speaker),

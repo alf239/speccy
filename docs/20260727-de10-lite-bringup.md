@@ -383,3 +383,23 @@ Consequences, while the cobbler is fitted:
 A plain 1:1 breakout without pours would not have this issue, but the pour
 also isn't worth abandoning the board over: everything fits on the remaining
 pins with room to spare.
+
+## Snapshot loader (stage 3g)
+
+`.z80` snapshots boot without any input devices: RAM banks are baked into
+block RAM init files and a generated stub (mapped over 0x0000-0x00FF at
+reset) restores every register, then jumps to the snapshot's PC — which
+disarms the overlay forever, restoring the real ROM.
+
+Simulation:  `make snap SNAP=game.z80 ROM=48.rom [FRAMES=n]` → out/snap.bmp
+Hardware:    `python3 tools/snap2hex.py game.z80 quartus/` then recompile;
+             SW[1] up + KEY[0] = boot into the game, SW[1] down = BASIC.
+
+Menu driving until the keyboard arrives — autokey switches (flip up to hold
+the key, down to release): SW[2]=ENTER, SW[3]=SPACE, SW[4]="1", SW[5]="2".
+Kempston works as usual once in-game.
+
+Format notes: .z80 v1/v2/v3, 48K only, compressed or not. TAP/TZX are tape
+*recordings* — they need the divMMC (stage 5) or an EAR-line player; the
+snapshot path sidesteps both. A game change is a recompile (~3 min) until
+stage 5 makes it an SD-card file copy.
