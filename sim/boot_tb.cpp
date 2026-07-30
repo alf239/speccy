@@ -8,7 +8,7 @@
 // itself makes sense.
 //
 //   boot_tb [--frames N] [--out FILE.bmp] [--all] [--expect-smoke]
-//           [--type "STRING"] [--type-at FRAME]
+//           [--type "STRING"] [--type-at FRAME] [--wav FILE.wav]
 //
 // --all dumps every frame (boot animation); default dumps only the last.
 // --expect-smoke asserts on the smoke-test ROM's known output, making this
@@ -147,6 +147,7 @@ int main(int argc, char** argv) {
     std::string outfile = "out/boot.bmp";
 
     std::string type_str;
+    std::string wav_path;
     int type_at = 120;
     bool snap = false, expect_snap = false;
     int  snap_at = -1;                 // re-arm + reset at this frame
@@ -155,6 +156,7 @@ int main(int argc, char** argv) {
         if      (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--out")    && i + 1 < argc) outfile = argv[++i];
         else if (!strcmp(argv[i], "--type")   && i + 1 < argc) type_str = argv[++i];
+        else if (!strcmp(argv[i], "--wav")    && i + 1 < argc) wav_path = argv[++i];
         else if (!strcmp(argv[i], "--type-at")&& i + 1 < argc) type_at = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--all"))                    all = true;
         else if (!strcmp(argv[i], "--snap"))                   snap = true;
@@ -186,6 +188,10 @@ int main(int argc, char** argv) {
     if (!type_str.empty()) typist.program(type_str);
     bool typing_started = false;
 
+    // Speaker capture: sample every 320 clks -> 43750 Hz, 8-bit mono.
+    std::vector<uint8_t> audio;
+    int wav_div = 0;
+
     while (frame_no < frames) {
         if (typing_started && !typist.done()) {
             uint8_t pc, pd;
@@ -194,6 +200,11 @@ int main(int argc, char** argv) {
         }
         top.clk = 0; top.eval();
         top.clk = 1; top.eval();
+
+        if (!wav_path.empty() && ++wav_div == 320) {
+            wav_div = 0;
+            audio.push_back(top.speaker ? 220 : 36);
+        }
 
         const bool hs = top.vga_hsync, vs = top.vga_vsync;
 
@@ -286,6 +297,25 @@ int main(int argc, char** argv) {
         // cyan pixels (doubled = a handful). Loose bounds, deliberately.
         if (red < 100000) { fprintf(stderr, "FAIL: expected a red border\n"); failures++; }
         if (other_nonblack < 4) { fprintf(stderr, "FAIL: expected the written screen byte\n"); failures++; }
+    }
+
+    if (!wav_path.empty()) {
+        FILE* wf = fopen(wav_path.c_str(), "wb");
+        if (wf) {
+            const uint32_t rate = 43750, dsz = (uint32_t)audio.size();
+            uint8_t h[44] = {'R','I','F','F',0,0,0,0,'W','A','V','E','f','m','t',' ',
+                             16,0,0,0, 1,0, 1,0, 0,0,0,0, 0,0,0,0, 1,0, 8,0,
+                             'd','a','t','a',0,0,0,0};
+            uint32_t riff = 36 + dsz;
+            memcpy(h+4,  &riff, 4);
+            memcpy(h+24, &rate, 4);
+            memcpy(h+28, &rate, 4);   // byte rate = rate * 1ch * 1B
+            memcpy(h+40, &dsz,  4);
+            fwrite(h, 1, 44, wf);
+            fwrite(audio.data(), 1, dsz, wf);
+            fclose(wf);
+            printf("wrote %s: %.1f s of beeper\n", wav_path.c_str(), dsz/(double)rate);
+        }
     }
 
     top.final();
