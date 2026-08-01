@@ -32,6 +32,7 @@ module speccy #(
     parameter VRAM_FILE  = "",
     parameter RAM_FILE   = "",     // upper 32K init (snapshot loading)
     parameter STUB_FILE  = "",     // 256-byte snapshot boot overlay
+    parameter DIVMMC_ROM = "",     // 8K esxDOS image; empty = no divMMC
     // Interrupt: 32 T-states long on a 48K, asserted once per frame. The line
     // it starts on decides where "raster line 0" sits for timing-sensitive
     // code; the start of vertical blanking is a reasonable default and this is
@@ -46,6 +47,10 @@ module speccy #(
     // at 0x0000-0x00FF until the first opcode fetch at or above 0x0100 (the
     // stub's final JP into the snapshot's PC). Tie low for a normal boot.
     input  wire        arm_snapshot,
+
+    // divMMC runtime enable (board switch). With this low -- or with no
+    // DIVMMC_ROM built in -- the machine is exactly the plain 48K.
+    input  wire        divmmc_en,
 
     // High while the boot copier is refilling RAM from the snapshot shadow.
     // The CPU must be held in reset while this is set -- block RAM init only
@@ -66,6 +71,10 @@ module speccy #(
     input  wire        wr_n,
     input  wire        m1_n,
     output wire        int_n,
+    // Held low to stretch an I/O cycle while the SPI exchange completes --
+    // this is what makes the 350 kHz init clock safe against back-to-back
+    // OUT/IN sequences in esxDOS. Feed to the CPU's wait_n.
+    output wire        cpu_wait_n,
 
     // ---- peripherals ----------------------------------------------------
     input  wire [39:0] key_matrix,   // active high, 8 half-rows of 5
@@ -74,6 +83,12 @@ module speccy #(
     output reg         speaker,
     output reg         mic,
     output wire [2:0]  border,
+
+    // ---- SD card (SPI) --------------------------------------------------
+    output wire        sd_cs,
+    output wire        sd_sck,
+    output wire        sd_mosi,
+    input  wire        sd_miso,
 
     // ---- video ----------------------------------------------------------
     output wire [3:0]  vga_r,
@@ -211,18 +226,171 @@ module speccy #(
         end
     endgenerate
 
+    // -----------------------------------------------------------------------
+    // divMMC: esxDOS ROM + 32K banked RAM behind an automapper.
+    //
+    // The automapper takes effect AFTER the M1 cycle that hits an entry
+    // point -- the trapped instruction itself still executes from the
+    // Spectrum ROM, and the following fetch lands in esxDOS. Exit points
+    // (0x1FF8-0x1FFF) unmap the same way, so the RET there executes from
+    // esxDOS ROM and returns into Spectrum ROM. This delay is the designed
+    // behaviour of divIDE/divMMC; esxDOS is assembled around it.
+    //
+    // Port 0xE3: bit7 CONMEM (manual map), bit6 MAPRAM (sticky until reset:
+    // divRAM bank 3 replaces the ROM, write-protected), bits1:0 bank at
+    // 0x2000-0x3FFF. Port 0xE7 bit0: SD /CS. Port 0xEB: SPI data exchange.
+    // -----------------------------------------------------------------------
+    localparam HAS_DIVMMC = (DIVMMC_ROM != "");
+
+    wire        div_on = divmmc_en && HAS_DIVMMC;
+    wire [7:0]  esx_q, divram_q;
+    reg         conmem, mapram, automap;
+    reg  [1:0]  divbank;
+    reg         sd_cs_r;
+    reg         spi_start;
+    reg  [7:0]  spi_tx;
+    wire [7:0]  spi_rx;
+    wire        spi_busy;
+
+    wire divmap = div_on && (automap || conmem);
+
+    // M1 fetch tracking: decisions latch during the fetch, apply at its end.
+    wire m1_fetch = mem_rd && !m1_n;
+    reg  m1_fetch_d;
+    reg  [15:0] fetch_a;
+    always @(posedge clk) begin
+        m1_fetch_d <= m1_fetch;
+        if (m1_fetch) fetch_a <= cpu_a;
+    end
+    wire fetch_end = m1_fetch_d && !m1_fetch;
+
+    wire entry_hit = (fetch_a == 16'h0000) || (fetch_a == 16'h0008) ||
+                     (fetch_a == 16'h0038) || (fetch_a == 16'h0066) ||
+                     (fetch_a == 16'h04C6) || (fetch_a == 16'h0562) ||
+                     (fetch_a[15:8] == 8'h3D);
+    wire exit_hit  = (fetch_a[15:3] == 13'h03FF);        // 0x1FF8-0x1FFF
+
+    // divRAM addressing: bank 3 stands in for the ROM in MAPRAM mode.
+    wire        div_low   = divmap && (cpu_a[15:13] == 3'b000);  // 0x0000-1FFF
+    wire        div_win   = divmap && (cpu_a[15:13] == 3'b001);  // 0x2000-3FFF
+    wire [14:0] divram_a  = div_low ? {2'b11, cpu_a[12:0]}
+                                    : {divbank, cpu_a[12:0]};
+    wire        bank3_wp  = mapram && (div_low || (div_win && divbank == 2'b11));
+    wire        divram_we = mem_wr && div_win && !bank3_wp;
+
+    // I/O decode (full low byte; A0=1 so the ULA never collides)
+    wire io_e3 = div_on && (cpu_a[7:0] == 8'hE3);
+    wire io_e7 = div_on && (cpu_a[7:0] == 8'hE7);
+    wire io_eb = div_on && (cpu_a[7:0] == 8'hEB);
+
+    generate
+        if (HAS_DIVMMC) begin : g_divmmc
+            ram #(.ADDR_W(13), .INIT_FILE(DIVMMC_ROM)) u_esxrom (
+                .clk (clk), .addr (cpu_a[12:0]), .din (8'd0),
+                .we (1'b0), .dout (esx_q)
+            );
+            ram #(.ADDR_W(15)) u_divram (
+                .clk (clk), .addr (divram_a), .din (cpu_do),
+                .we (divram_we), .dout (divram_q)
+            );
+
+            // SD init demands <=400 kHz; after 1024 exchanges (well past any
+            // init conversation) the clock steps up to 7 MHz. The WAIT
+            // stretch below makes the slow phase invisible to software.
+            reg [10:0] spi_cnt;
+            wire spi_fast = spi_cnt[10];
+
+            reg  eb_started;
+            wire io_any_eb = (io_rd || io_wr_raw) && io_eb;
+
+            always @(posedge clk) begin
+                if (rst) begin
+                    conmem  <= 1'b0;
+                    mapram  <= 1'b0;
+                    automap <= 1'b0;
+                    divbank <= 2'd0;
+                    sd_cs_r <= 1'b1;
+                    spi_cnt <= 11'd0;
+                    spi_start  <= 1'b0;
+                    spi_tx     <= 8'hFF;
+                    eb_started <= 1'b0;
+                end else begin
+                    spi_start <= 1'b0;
+
+                    if (fetch_end) begin
+                        if (entry_hit)     automap <= 1'b1;
+                        else if (exit_hit) automap <= 1'b0;
+                    end
+
+                    if (io_wr && io_e3) begin
+                        conmem  <= cpu_do[7];
+                        mapram  <= mapram | cpu_do[6];   // sticky
+                        divbank <= cpu_do[1:0];
+                    end
+                    if (io_wr && io_e7)
+                        sd_cs_r <= cpu_do[0];
+
+                    // Start an exchange once per (possibly stretched) OUT.
+                    if (io_wr_raw && io_eb && !spi_busy && !eb_started) begin
+                        spi_tx     <= cpu_do;
+                        spi_start  <= 1'b1;
+                        eb_started <= 1'b1;
+                        if (!spi_fast) spi_cnt <= spi_cnt + 11'd1;
+                    end
+                    if (!io_any_eb) eb_started <= 1'b0;
+                end
+            end
+
+            spi_master u_spi (
+                .clk (clk), .rst (rst),
+                .speed (spi_fast),
+                .start (spi_start), .tx (spi_tx),
+                .rx (spi_rx), .busy (spi_busy),
+                .sck (sd_sck), .mosi (sd_mosi), .miso (sd_miso)
+            );
+        end else begin : g_no_divmmc
+            // Without a divMMC the trap/port plumbing has no consumers.
+            /* verilator lint_off UNUSEDSIGNAL */
+            wire _div_unused = &{sd_miso, spi_start, spi_tx, fetch_end,
+                                 entry_hit, exit_hit, divram_a, divram_we,
+                                 io_e3, io_e7};
+            /* verilator lint_on UNUSEDSIGNAL */
+            assign esx_q    = 8'hFF;
+            assign divram_q = 8'hFF;
+            assign spi_rx   = 8'hFF;
+            assign spi_busy = 1'b0;
+            assign sd_sck   = 1'b0;
+            assign sd_mosi  = 1'b1;
+            always @(posedge clk) begin
+                conmem <= 1'b0; mapram <= 1'b0; automap <= 1'b0;
+                divbank <= 2'd0; sd_cs_r <= 1'b1;
+                spi_start <= 1'b0; spi_tx <= 8'hFF;
+            end
+        end
+    endgenerate
+
+    assign sd_cs = sd_cs_r;
+
+    // Stretch any 0xEB access while an exchange is in flight: reads then
+    // return a completed byte, writes queue cleanly behind the previous one.
+    assign cpu_wait_n = !((io_rd || io_wr_raw) && io_eb && spi_busy);
+
     // The RAMs register their outputs, so the bank select has to be delayed to
     // match or the mux picks the wrong one.
     reg [1:0] rd_bank;
-    reg       rd_stub;
+    reg       rd_stub, rd_divrom, rd_divram;
     always @(posedge clk) begin
-        rd_bank <= cpu_a[15:14];
-        rd_stub <= overlay_armed && (cpu_a[15:8] == 8'h00);
+        rd_bank   <= cpu_a[15:14];
+        rd_stub   <= overlay_armed && (cpu_a[15:8] == 8'h00);
+        rd_divrom <= div_low && !mapram;
+        rd_divram <= (div_low && mapram) || div_win;
     end
 
-    wire [7:0] mem_data = rd_stub             ? stub_q  :
-                          (rd_bank == 2'b00)  ? rom_q   :
-                          (rd_bank == 2'b01)  ? vram_q  : ramhi_q;
+    wire [7:0] mem_data = rd_stub             ? stub_q   :
+                          rd_divrom           ? esx_q    :
+                          rd_divram           ? divram_q :
+                          (rd_bank == 2'b00)  ? rom_q    :
+                          (rd_bank == 2'b01)  ? vram_q   : ramhi_q;
 
     // -----------------------------------------------------------------------
     // Ports
@@ -230,8 +398,12 @@ module speccy #(
     // IORQ with M1 low is an interrupt acknowledge, not an I/O cycle -- if that
     // is not excluded, the ULA answers the acknowledge and corrupts the vector.
     // -----------------------------------------------------------------------
-    wire io_rd = !iorq_n && !rd_n && m1_n;
-    wire io_wr = !iorq_n && !wr_n && m1_n;
+    wire io_rd     = !iorq_n && !rd_n && m1_n;
+    wire io_wr_raw = !iorq_n && !wr_n && m1_n;
+    // Registered ports must latch once per cycle even when WAIT stretches it.
+    reg  io_wr_d;
+    always @(posedge clk) io_wr_d <= io_wr_raw;
+    wire io_wr = io_wr_raw && !io_wr_d;
 
     wire ula_sel      = !cpu_a[0];
     wire kempston_sel = !cpu_a[5];
@@ -265,7 +437,8 @@ module speccy #(
     wire [7:0] kempston = {3'b000, joy_state[4], joy_state[0], joy_state[1], joy_state[2], joy_state[3]};
 
     assign cpu_di = mem_rd ? mem_data :
-                    io_rd  ? (ula_sel      ? ula_data :
+                    io_rd  ? (io_eb        ? spi_rx   :
+                              ula_sel      ? ula_data :
                               kempston_sel ? kempston : 8'hFF)
                            : 8'hFF;
 

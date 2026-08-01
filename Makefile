@@ -48,13 +48,18 @@ joytest: $(JOY_EXE)
 BUS_MDIR := obj_dir_bus
 BUS_EXE  := $(BUS_MDIR)/bus_tb
 BUS_RTL  := rtl/video_timing.v rtl/vram.v rtl/ram.v rtl/video.v rtl/palette.v \
-            rtl/scandoubler.v rtl/keyboard.v rtl/speccy.v sim/speccy_tb_top.v
+            rtl/scandoubler.v rtl/keyboard.v rtl/spi_master.v rtl/speccy.v \
+            sim/speccy_tb_top.v
 
 # Known ROM contents for the bus tests; must match test_rom_byte() in bus_tb.cpp
 sim/test_rom.hex:
 	@python3 -c "print('\n'.join('%02X' % ((i*7+3)&0xFF) for i in range(16384)))" > $@
 
-$(BUS_EXE): $(BUS_RTL) sim/bus_tb.cpp sim/test_rom.hex
+# Known esxDOS-slot contents; must match esx_rom_byte() in bus_tb.cpp
+sim/esx_rom.hex:
+	@python3 -c "print('\n'.join('%02X' % ((i*11+5)&0xFF) for i in range(8192)))" > $@
+
+$(BUS_EXE): $(BUS_RTL) sim/bus_tb.cpp sim/test_rom.hex sim/esx_rom.hex
 	$(VERILATOR) --cc --exe --build -j 0 --top-module speccy_tb_top \
 	  --Mdir $(BUS_MDIR) -o bus_tb \
 	  -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY \
@@ -69,8 +74,8 @@ CPU_EXE  := $(CPU_MDIR)/cpu_tb
 TV80_RTL := rtl/tv80/tv80s.v rtl/tv80/tv80_core.v rtl/tv80/tv80_alu.v \
             rtl/tv80/tv80_mcode.v rtl/tv80/tv80_reg.v
 CPU_RTL  := rtl/video_timing.v rtl/vram.v rtl/ram.v rtl/video.v rtl/palette.v \
-            rtl/scandoubler.v rtl/keyboard.v rtl/speccy.v rtl/speccy48.v \
-            $(TV80_RTL) sim/speccy48_tb_top.v
+            rtl/scandoubler.v rtl/keyboard.v rtl/spi_master.v rtl/speccy.v \
+            rtl/speccy48.v $(TV80_RTL) sim/speccy48_tb_top.v
 
 sim/cpu_rom.hex: sim/make_cpu_rom.py
 	python3 sim/make_cpu_rom.py $@
@@ -90,7 +95,7 @@ cputest: $(CPU_EXE)
 BOOT_MDIR := obj_dir_boot
 BOOT_EXE  := $(BOOT_MDIR)/boot_tb
 BOOT_RTL  := rtl/video_timing.v rtl/vram.v rtl/ram.v rtl/video.v rtl/palette.v \
-             rtl/ps2_rx.v rtl/ps2_keyboard.v \
+             rtl/ps2_rx.v rtl/ps2_keyboard.v rtl/spi_master.v \
              rtl/scandoubler.v rtl/keyboard.v rtl/speccy.v rtl/speccy48.v \
              $(TV80_RTL) sim/boot_tb_top.v
 # The ROM path is baked in as out/bootrom.hex; the file is re-generated per
@@ -178,6 +183,6 @@ lint:
 	$(VERILATOR) --lint-only --top-module $(TOP) -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY $(RTL)
 
 clean:
-	rm -rf $(MDIR) $(JOY_MDIR) $(BUS_MDIR) $(CPU_MDIR) $(BOOT_MDIR) $(PS2_MDIR) $(SD_MDIR) out sim/test_rom.hex sim/cpu_rom.hex
+	rm -rf $(MDIR) $(JOY_MDIR) $(BUS_MDIR) $(CPU_MDIR) $(BOOT_MDIR) $(PS2_MDIR) $(SD_MDIR) out sim/test_rom.hex sim/esx_rom.hex sim/cpu_rom.hex
 
 .PHONY: all run open lint clean joytest bustest cputest boottest boot ps2test snaptest snap sdtest test

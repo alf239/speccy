@@ -52,6 +52,9 @@ module boot_tb_top #(
                .RAM_FILE(RAM_FILE), .STUB_FILE(STUB_FILE)) u_ss (
         .clk          (clk),
         .rst          (rst),
+        .divmmc_en    (1'b0),
+        .nmi_button   (1'b0),
+        .sd_cs (), .sd_sck (), .sd_mosi (), .sd_miso (1'b1),
         .arm_snapshot (arm_snapshot),
         .key_matrix (key_matrix | ps2_matrix),
         .joy_state  (joy_state),

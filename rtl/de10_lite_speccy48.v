@@ -23,6 +23,10 @@
 //   header 11                                 5V for the keyboard
 //   header 31 33             GPIO[26,28]      PS/2 clock, data
 //   header 37                GPIO[32]         beeper out (RC -> 3.5mm jack)
+//   header 15 19 21 23       GPIO[12,16,18,20] SD: /CS, MOSI, MISO, SCK
+//
+//   SW[0]      divMMC enable (needs esxdos.hex built in and an SD card)
+//   KEY[1]     NMI -- the esxDOS file-browser button
 //
 // Pins 9,14,20,25,34,39 (GPIO[8,11,17,22,29,34]) are grounded by the Pi
 // T-cobbler's ground pour (they are all GND on a Pi) -- never assign them
@@ -84,9 +88,19 @@ module de10_lite_speccy48 (
     // -----------------------------------------------------------------------
     wire speaker;
 
-    // Everything is an input except the beeper. (Even-column pins unused;
-    // cobbler-grounded pins stay tri-stated so the pour is harmless.)
-    assign GPIO[31:0]  = 32'bz;
+    wire sd_cs, sd_sck, sd_mosi;
+
+    // Inputs and unused pins tri-stated; beeper and SD outputs driven.
+    // (Cobbler-grounded pins 9/14/20/25/34/39 stay tri-stated always.)
+    assign GPIO[11:0]  = 12'bz;
+    assign GPIO[12]    = sd_cs;                       // pin 15
+    assign GPIO[15:13] = 3'bz;
+    assign GPIO[16]    = sd_mosi;                     // pin 19
+    assign GPIO[17]    = 1'bz;
+    assign GPIO[18]    = 1'bz;                        // MISO: input, pin 21
+    assign GPIO[19]    = 1'bz;
+    assign GPIO[20]    = sd_sck;                      // pin 23
+    assign GPIO[31:21] = 11'bz;
     assign GPIO[35:33] = 3'bz;
     assign GPIO[32]    = speaker;
 
@@ -170,10 +184,17 @@ module de10_lite_speccy48 (
                    | ({39'd0, key_s} << 6);    // S   (row A9,  key 1)
 
     speccy48 #(.ROM_FILE("rom48.hex"), .VRAM_FILE("snap_vram.hex"),
-               .RAM_FILE("snap_ram.hex"), .STUB_FILE("snap_stub.hex")) u_speccy (
+               .RAM_FILE("snap_ram.hex"), .STUB_FILE("snap_stub.hex"),
+               .DIVMMC_ROM("esxdos.hex")) u_speccy (
         .clk          (clk14),
         .rst          (rst),
         .arm_snapshot (SW[1]),
+        .divmmc_en    (SW[0] && !SW[1]),   // snapshot mode outranks divMMC
+        .nmi_button   (!KEY[1]),
+        .sd_cs        (sd_cs),
+        .sd_sck       (sd_sck),
+        .sd_mosi      (sd_mosi),
+        .sd_miso      (GPIO[18]),
         .key_matrix (ps2_matrix | autokey),
         .joy_state  (joy_state),
         .ear_in     (1'b1),

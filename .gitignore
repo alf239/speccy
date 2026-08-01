@@ -16,3 +16,4 @@ quartus/incremental_db/
 *.tap
 *.tzx
 *.sna
+quartus/esxdos.hex

@@ -58,6 +58,9 @@ static void mem_write(uint16_t a, uint8_t d) {
 static uint8_t io_read(uint16_t a) {
     top->cpu_a = a; top->iorq_n = 0; top->rd_n = 0;
     tick(4);
+    int guard = 100000;
+    while (!top->cpu_wait_n && guard--) tick();   // honour WAIT stretching
+    tick(2);
     uint8_t d = top->cpu_di;
     idle();
     return d;
@@ -66,11 +69,26 @@ static uint8_t io_read(uint16_t a) {
 static void io_write(uint16_t a, uint8_t d) {
     top->cpu_a = a; top->cpu_do = d; top->iorq_n = 0; top->wr_n = 0;
     tick(4);
+    int guard = 100000;
+    while (!top->cpu_wait_n && guard--) tick();
+    tick(2);
     idle();
 }
 
-// Must match the generator in the Makefile.
+// Must match the generators in the Makefile.
 static uint8_t test_rom_byte(int i) { return (uint8_t)((i * 7 + 3) & 0xFF); }
+static uint8_t esx_rom_byte(int i)  { return (uint8_t)((i * 11 + 5) & 0xFF); }
+
+// An M1 opcode fetch: the automapper's trigger. Returns the fetched byte
+// (which, per divMMC semantics, comes from the memory mapped BEFORE the
+// fetch -- the map changes at the cycle's end).
+static uint8_t m1_fetch(uint16_t a) {
+    top->cpu_a = a; top->m1_n = 0; top->mreq_n = 0; top->rd_n = 0;
+    tick(4);
+    uint8_t d = top->cpu_di;
+    idle();
+    return d;
+}
 
 // key_matrix bit for half-row `row` (0 = A8 .. 7 = A15), key `bit` (0..4)
 static uint64_t key(int row, int bit) { return 1ULL << (row * 5 + bit); }
@@ -81,7 +99,7 @@ int main(int argc, char** argv) {
     top = new Vspeccy_tb_top(&ctx);
 
     top->rst = 1; top->key_matrix = 0; top->joy_state = 0; top->ear_in = 1;
-    top->cpu_a = 0; top->cpu_do = 0;
+    top->cpu_a = 0; top->cpu_do = 0; top->divmmc_en = 0;
     idle();
     tick(16);
     top->rst = 0;
@@ -177,6 +195,79 @@ int main(int argc, char** argv) {
 
     // An unclaimed port must float high, not answer.
     check("unused port 0x00FD", io_read(0x00FD), 0xFF);
+
+    // ---- divMMC ----------------------------------------------------------
+    printf("divMMC\n");
+    top->divmmc_en = 1;
+
+    // Unmapped: low memory is the Spectrum ROM, ports quiet.
+    check("unmapped: ROM at 0x0001",  mem_read(0x0001), test_rom_byte(1));
+
+    // Entry trap is DELAYED: the trapped fetch itself reads Spectrum ROM...
+    check("trap fetch sees old ROM",  m1_fetch(0x0000), test_rom_byte(0));
+    // ...and afterwards esxDOS is mapped at 0x0000-0x1FFF.
+    check("mapped: esx at 0x0001",    mem_read(0x0001), esx_rom_byte(1));
+    check("mapped: esx at 0x1234",    mem_read(0x1234), esx_rom_byte(0x1234));
+    check("0x4000+ unaffected",       mem_read(0x8000), 0x11);
+
+    // Banked RAM window at 0x2000.
+    io_write(0x00E3, 0x02);                       // bank 2
+    mem_write(0x2000, 0xA7);
+    check("divRAM bank2 write/read",  mem_read(0x2000), 0xA7);
+    io_write(0x00E3, 0x00);                       // bank 0
+    mem_write(0x2000, 0x11);
+    check("divRAM bank0 distinct",    mem_read(0x2000), 0x11);
+    io_write(0x00E3, 0x02);
+    check("bank2 survives switch",    mem_read(0x2000), 0xA7);
+
+    // Exit trap (also delayed): RET at 0x1FF8 still executes from esx ROM.
+    check("exit fetch sees esx",      m1_fetch(0x1FF8), esx_rom_byte(0x1FF8));
+    check("unmapped again",           mem_read(0x0001), test_rom_byte(1));
+
+    // CONMEM: manual mapping without any fetch.
+    io_write(0x00E3, 0x80);
+    check("CONMEM maps",              mem_read(0x0001), esx_rom_byte(1));
+    io_write(0x00E3, 0x00);
+    check("CONMEM clears",            mem_read(0x0001), test_rom_byte(1));
+
+    // 0x3Dxx (TR-DOS shim) also traps, delayed. Must run before MAPRAM,
+    // which permanently (stickily) replaces the esx ROM view.
+    m1_fetch(0x3D00);
+    check("0x3Dxx trap maps",         mem_read(0x0001), esx_rom_byte(1));
+    m1_fetch(0x1FFF);                             // unmap
+
+    // MAPRAM: bank 3 becomes the write-protected 'ROM'.
+    io_write(0x00E3, 0x83);                       // CONMEM + bank 3
+    mem_write(0x2000, 0x77);                      // seed bank 3
+    io_write(0x00E3, 0xC0);                       // CONMEM + MAPRAM
+    check("MAPRAM: bank3 at 0x0000",  mem_read(0x0000), 0x77);
+    mem_write(0x0000, 0x55);
+    check("MAPRAM: low is RO",        mem_read(0x0000), 0x77);
+    io_write(0x00E3, 0xC3);                       // window also bank 3
+    mem_write(0x2000, 0x99);
+    check("MAPRAM: bank3 RO via win", mem_read(0x2000), 0x77);
+    check("MAPRAM is sticky",         mem_read(0x0000), 0x77);
+    io_write(0x00E3, 0x00);                       // cannot clear mapram...
+    io_write(0x00E3, 0x80);
+    check("...even via port",         mem_read(0x0000), 0x77);
+    io_write(0x00E3, 0x00);
+
+    // SPI: CS register and a loopback exchange (tb ties MISO to MOSI).
+    check("SD /CS idle high",         top->sd_cs, 1);
+    io_write(0x00E7, 0xFE);
+    check("SD /CS asserted",          top->sd_cs, 0);
+    io_write(0x00EB, 0xA5);
+    check("SPI loopback",             io_read(0x00EB), 0xA5);
+    io_write(0x00EB, 0x3C);
+    check("SPI second exchange",      io_read(0x00EB), 0x3C);
+    io_write(0x00E7, 0xFF);
+    check("SD /CS released",          top->sd_cs, 1);
+
+    // Disabled: no trap, ports dead.
+    top->divmmc_en = 0;
+    m1_fetch(0x0000);
+    check("disabled: no trap",        mem_read(0x0001), test_rom_byte(1));
+    top->divmmc_en = 1;
 
     // ---- interrupt -------------------------------------------------------
     printf("interrupt\n");

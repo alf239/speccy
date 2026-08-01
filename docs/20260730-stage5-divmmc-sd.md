@@ -105,3 +105,12 @@ native 3.3 V.
   green: init conversation, CMD17 read, CMD24 write + readback, both clock
   speeds, mode-0 phase verified. 22 checks in `make sdtest`. Next: divMMC
   ports (0xE3/0xE7/0xEB) + automapper + paging in speccy.v.
+- 2026-08-02: step 3 done -- divMMC in speccy.v: automapper (delayed entry/
+  exit traps incl. 0x3Dxx), port 0xE3 with sticky MAPRAM + bank3 write
+  protection, 0xE7 CS, 0xEB SPI with WAIT-stretched access (the Z80's wait_n,
+  unused until now, absorbs the 350 kHz init clock), auto speed-up after 1024
+  exchanges, NMI button on KEY[1], SW[0] = divMMC enable (snapshot mode
+  outranks it). 24 new machine-level checks in bustest; suite total 131.
+  Board builds now ALSO need quartus/esxdos.hex (bin2hex from esxDOS's
+  ESXMMC.BIN -- gitignored like the ROMs). Next: step 4, esxDOS boot in
+  simulation against the SD model + a FAT image.

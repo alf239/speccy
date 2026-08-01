@@ -4,6 +4,9 @@
 `default_nettype none
 
 module speccy_tb_top (
+    output wire        sd_cs,
+    output wire        cpu_wait_n,
+    output wire        _unused_sck_o,
     input  wire        clk,
     input  wire        rst,
     output wire        ce_cpu,
@@ -19,6 +22,7 @@ module speccy_tb_top (
     input  wire        m1_n,
     output wire        int_n,
 
+    input  wire        divmmc_en,
     input  wire [39:0] key_matrix,
     input  wire [4:0]  joy_state,
     input  wire        ear_in,
@@ -27,8 +31,17 @@ module speccy_tb_top (
     output wire [2:0]  border
 );
 
-    speccy #(.ROM_FILE("sim/test_rom.hex")) u_speccy (
-        .clk (clk), .rst (rst), .arm_snapshot (1'b0), .boot_busy (),
+    // sck deliberately unused: the loopback needs only data. Verilator is
+    // right that it dangles, so give it a sink.
+    wire sd_sck_w, sd_mosi_w;
+    wire _unused_sck = sd_sck_w;
+
+    speccy #(.ROM_FILE("sim/test_rom.hex"),
+             .DIVMMC_ROM("sim/esx_rom.hex")) u_speccy (
+        .clk (clk), .rst (rst), .arm_snapshot (1'b0), .divmmc_en (divmmc_en),
+        .boot_busy (), .cpu_wait_n (cpu_wait_n),
+        .sd_cs (sd_cs), .sd_sck (sd_sck_w), .sd_mosi (sd_mosi_w),
+        .sd_miso (sd_mosi_w),          // loopback: every exchange echoes
         .ce_cpu (ce_cpu), .ce_pix (ce_pix),
         .cpu_a (cpu_a), .cpu_do (cpu_do), .cpu_di (cpu_di),
         .mreq_n (mreq_n), .iorq_n (iorq_n), .rd_n (rd_n), .wr_n (wr_n),
@@ -39,6 +52,7 @@ module speccy_tb_top (
         .vga_hsync (), .vga_vsync (), .vga_blank ()
     );
 
+    assign _unused_sck_o = _unused_sck;
 endmodule
 
 `default_nettype wire
