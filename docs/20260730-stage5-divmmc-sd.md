@@ -91,3 +91,17 @@ the ROM tests).
 4. esxDOS boot in simulation, NMI browser on the virtual monitor
 5. Hardware: wire per the table, `git pull`, recompile, insert card
 6. Retire the per-game recompile ceremony with honours
+
+## Breakout pinout (as identified, plain 3.3 V board)
+
+DI=MOSI -> pin 19, D0=MISO -> pin 21, CLK=SCK -> pin 23, CS -> pin 15,
+3v -> pin 29, G -> GND. DT1/DT2 (SD-mode DAT1/2) unconnected in SPI mode;
+CD (card-detect switch) optional. Six wires, no resistors -- everything
+native 3.3 V.
+
+## Progress log
+
+- 2026-07-30: spi_master.v + behavioural SDHC model (sim/sd_model.h) done and
+  green: init conversation, CMD17 read, CMD24 write + readback, both clock
+  speeds, mode-0 phase verified. 22 checks in `make sdtest`. Next: divMMC
+  ports (0xE3/0xE7/0xEB) + automapper + paging in speccy.v.

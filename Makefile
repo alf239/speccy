@@ -158,13 +158,26 @@ snap: $(BOOT_EXE)
 	./$(BOOT_EXE) --snap --frames $(or $(FRAMES),16) --out out/snap.bmp
 	@echo "wrote out/snap.bmp"
 
+# SPI master + behavioural SD card.
+SD_MDIR := obj_dir_sd
+SD_EXE  := $(SD_MDIR)/sd_tb
+
+$(SD_EXE): rtl/spi_master.v sim/sd_model.h sim/sd_tb.cpp
+	$(VERILATOR) --cc --exe --build -j 0 --top-module spi_master \
+	  --Mdir $(SD_MDIR) -o sd_tb \
+	  -Wall -Wno-DECLFILENAME \
+	  rtl/spi_master.v sim/sd_tb.cpp
+
+sdtest: $(SD_EXE)
+	./$(SD_EXE)
+
 # Everything that can be checked without hardware.
-test: run joytest bustest cputest boottest ps2test snaptest
+test: run joytest bustest cputest boottest ps2test snaptest sdtest
 
 lint:
 	$(VERILATOR) --lint-only --top-module $(TOP) -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY $(RTL)
 
 clean:
-	rm -rf $(MDIR) $(JOY_MDIR) $(BUS_MDIR) $(CPU_MDIR) $(BOOT_MDIR) $(PS2_MDIR) out sim/test_rom.hex sim/cpu_rom.hex
+	rm -rf $(MDIR) $(JOY_MDIR) $(BUS_MDIR) $(CPU_MDIR) $(BOOT_MDIR) $(PS2_MDIR) $(SD_MDIR) out sim/test_rom.hex sim/cpu_rom.hex
 
-.PHONY: all run open lint clean joytest bustest cputest boottest boot ps2test snaptest snap test
+.PHONY: all run open lint clean joytest bustest cputest boottest boot ps2test snaptest snap sdtest test
