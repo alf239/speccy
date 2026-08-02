@@ -15,6 +15,12 @@ snapshot boot, and — in simulation, wiring pending — esxDOS loading from SD.
 Saboteur II is played on it daily by people born four decades after its
 release, which was the whole point.
 
+![Phase 1: the complete machine](docs/img/phase1.jpg)
+
+*Saboteur II mid-game; DE10-Lite wearing its DIN-5/piezo hat; an AT keyboard
+hand-stickered with Sinclair keyword legends; one Atari-pattern joystick,
+still on active duty.*
+
 **The machine boots.** TV80 executing the real 48K ROM against the full video
 chain, captured by a testbench that locks onto the sync stream exactly as a
 monitor would:
