@@ -434,3 +434,15 @@ the attenuated line-level signal. Drive it directly instead:
 Full-swing 3.3 V, ~20 dB louder than via the divider. The divider + 1 uF
 stays in place for powered speakers / the phase-2 AY path. Expect the piezo
 to colour the sound around its resonance -- authentic enough for a beeper.
+
+### DIN-5 socket variant (AT keyboard, as built 2026-08-02)
+
+AT = PS/2 protocol in the older connector. Female socket, FRONT view, key at
+6 o'clock, pins arching the top: 1(clock) at 9:00, 4(GND) 10:30, 2(data)
+12:00, 5(+5V) 1:30, 3(NC) 3:00. SOLDER-SIDE VIEW IS MIRRORED -- pin 1 at
+3 o'clock from behind; trust embossed digits over any diagram.
+
+Wiring: pin 1 -> 2.2k -> header 31 (`P06`); pin 2 -> 2.2k -> header 33
+(`P13`); pin 5 -> straight -> header 11 (`P17`, 5V); pin 4 + housing ->
+ground. Pin 3 empty. Meter 5V at the 1:30 hole before the keyboard mates:
+a 4/5 swap is reversed power, the one destructive mistake available.
