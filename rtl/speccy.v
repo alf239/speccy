@@ -91,6 +91,10 @@ module speccy #(
     output wire        sd_mosi,
     input  wire        sd_miso,
 
+    // SD diagnostics for the board's displays: [7:0] last byte the CPU read
+    // from the card, [15:8] exchange counter (spins while SPI traffic flows)
+    output wire [15:0] dbg_sd,
+
     // ---- video ----------------------------------------------------------
     output wire [3:0]  vga_r,
     output wire [3:0]  vga_g,
@@ -316,6 +320,7 @@ module speccy #(
             reg  eb_started;
             reg  eb_r_started;
             reg  [7:0] eb_rd_val;
+            reg  [7:0] dbg_xfers;
             wire io_any_eb = (io_rd || io_wr_raw) && io_eb;
 
             always @(posedge clk) begin
@@ -331,8 +336,10 @@ module speccy #(
                     eb_started <= 1'b0;
                     eb_r_started <= 1'b0;
                     eb_rd_val  <= 8'hFF;
+                    dbg_xfers  <= 8'd0;
                 end else begin
                     spi_start <= 1'b0;
+                    if (spi_start) dbg_xfers <= dbg_xfers + 8'd1;
 
                     if (fetch_end) begin
                         if (entry_hit)     automap <= 1'b1;
@@ -378,6 +385,7 @@ module speccy #(
 
             assign eb_r_lat   = eb_r_started;
             assign eb_rd_hold = eb_rd_val;
+            assign dbg_sd     = {dbg_xfers, eb_rd_val};
 
             spi_master u_spi (
                 .clk (clk), .rst (rst),
@@ -397,6 +405,7 @@ module speccy #(
             assign spi_busy = 1'b0;
             assign eb_r_lat   = 1'b0;
             assign eb_rd_hold = 8'hFF;
+            assign dbg_sd     = 16'h0000;
             assign sd_sck   = 1'b0;
             assign sd_mosi  = 1'b1;
             always @(posedge clk) begin

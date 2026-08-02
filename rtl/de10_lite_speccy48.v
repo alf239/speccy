@@ -15,6 +15,7 @@
 //   KEY[0]     reset (hold)
 //   LEDR[4:0]  joystick     LEDR[7:5] border     LEDR[8] PLL lock
 //   LEDR[9]    heartbeat    HEX1/HEX0 Kempston port byte
+//              (divMMC mode: HEX1:0 last SPI rx byte, HEX3:2 exchange ctr)
 //
 // All peripheral signals sit on the ODD column of the header, so the whole
 // machine wires along one physical row (plus one ground wire to pin 12/30):
@@ -183,6 +184,9 @@ module de10_lite_speccy48 (
                    | ({39'd0, key_j} << 33)    // J   (row A14, key 3)
                    | ({39'd0, key_s} << 6);    // S   (row A9,  key 1)
 
+    wire        divmode = SW[0] && !SW[1];  // snapshot mode outranks divMMC
+    wire [15:0] dbg_sd;
+
     speccy48 #(.ROM_FILE("rom48.hex"), .VRAM_FILE("snap_vram.hex"),
                .RAM_FILE("snap_ram.hex"), .STUB_FILE("snap_stub.hex"),
                .SNAP_FILE("snap_all.hex"),
@@ -190,12 +194,13 @@ module de10_lite_speccy48 (
         .clk          (clk14),
         .rst          (rst),
         .arm_snapshot (SW[1]),
-        .divmmc_en    (SW[0] && !SW[1]),   // snapshot mode outranks divMMC
+        .divmmc_en    (divmode),
         .nmi_button   (!KEY[1]),
         .sd_cs        (sd_cs),
         .sd_sck       (sd_sck),
         .sd_mosi      (sd_mosi),
         .sd_miso      (GPIO[18]),
+        .dbg_sd       (dbg_sd),
         .key_matrix (ps2_matrix | autokey),
         .joy_state  (joy_state),
         .ear_in     (1'b1),
@@ -229,10 +234,17 @@ module de10_lite_speccy48 (
     assign LEDR[8]   = pll_locked;
     assign LEDR[9]   = heartbeat[23];
 
-    assign HEX0 = seg7(kempston[3:0]);
-    assign HEX1 = seg7(kempston[7:4]);
-    assign HEX2 = seg7(ps2_last[3:0]);
-    assign HEX3 = seg7(ps2_last[7:4]);
+    // divMMC mode repurposes HEX3:0 as SD diagnostics:
+    //   HEX1:0  last SPI byte the CPU read from the card
+    //           FF forever = card never answers (wiring/contact)
+    //           01         = card alive but stuck in idle (init loop)
+    //           00/data    = init passed, look further downstream
+    //   HEX3:2  SPI exchange counter -- spins while esxDOS is talking
+    // HEX5:4 stay on the PS/2 diagnostics in both modes.
+    assign HEX0 = seg7(divmode ? dbg_sd[3:0]   : kempston[3:0]);
+    assign HEX1 = seg7(divmode ? dbg_sd[7:4]   : kempston[7:4]);
+    assign HEX2 = seg7(divmode ? dbg_sd[11:8]  : ps2_last[3:0]);
+    assign HEX3 = seg7(divmode ? dbg_sd[15:12] : ps2_last[7:4]);
     assign HEX4 = seg7(ps2_act);
     assign HEX5 = seg7(ps2_errs);
 

@@ -42,6 +42,7 @@ module speccy_tb_top (
         .boot_busy (), .cpu_wait_n (cpu_wait_n),
         .sd_cs (sd_cs), .sd_sck (sd_sck_w), .sd_mosi (sd_mosi_w),
         .sd_miso (sd_mosi_w),          // loopback: every exchange echoes
+        .dbg_sd (),
         .ce_cpu (ce_cpu), .ce_pix (ce_pix),
         .cpu_a (cpu_a), .cpu_do (cpu_do), .cpu_di (cpu_di),
         .mreq_n (mreq_n), .iorq_n (iorq_n), .rd_n (rd_n), .wr_n (wr_n),

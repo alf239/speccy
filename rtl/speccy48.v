@@ -25,6 +25,7 @@ module speccy48 #(
     output wire        sd_sck,
     output wire        sd_mosi,
     input  wire        sd_miso,
+    output wire [15:0] dbg_sd,      // SD diagnostics: {exchange ctr, last rx}
 
     input  wire [39:0] key_matrix,
     input  wire [4:0]  joy_state,
@@ -99,6 +100,7 @@ module speccy48 #(
         .sd_sck       (sd_sck),
         .sd_mosi      (sd_mosi),
         .sd_miso      (sd_miso),
+        .dbg_sd       (dbg_sd),
         .ce_cpu     (ce_cpu),
         .ce_pix     (),
         .cpu_a      (cpu_a),

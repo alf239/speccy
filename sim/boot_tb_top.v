@@ -64,7 +64,7 @@ module boot_tb_top #(
         .divmmc_en    (divmmc_en),
         .nmi_button   (nmi_button),
         .sd_cs (sd_cs), .sd_sck (sd_sck), .sd_mosi (sd_mosi),
-        .sd_miso (sd_miso),
+        .sd_miso (sd_miso), .dbg_sd (),
         .arm_snapshot (arm_snapshot),
         .key_matrix (key_matrix | ps2_matrix),
         .joy_state  (joy_state),

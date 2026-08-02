@@ -183,6 +183,7 @@ set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[2]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[4]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[6]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[10]
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[18]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[26]
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to GPIO[28]
 

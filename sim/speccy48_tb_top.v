@@ -37,7 +37,7 @@ module speccy48_tb_top (
         .rst          (rst),
         .divmmc_en    (1'b0),
         .nmi_button   (1'b0),
-        .sd_cs (), .sd_sck (), .sd_mosi (), .sd_miso (1'b1),
+        .sd_cs (), .sd_sck (), .sd_mosi (), .sd_miso (1'b1), .dbg_sd (),
         .arm_snapshot (1'b0),
         .key_matrix (key_matrix),
         .joy_state  (joy_state),
