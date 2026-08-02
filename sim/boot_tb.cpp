@@ -155,6 +155,7 @@ int main(int argc, char** argv) {
     std::string sd_path;
     bool esx = false;
     int  nmi_at = -1;
+    int  reset_at = -1;                // plain KEY[0]-style reset at this frame
 
     for (int i = 1; i < argc; i++) {
         if      (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
@@ -167,6 +168,7 @@ int main(int argc, char** argv) {
         else if (!strcmp(argv[i], "--snap-at") && i + 1 < argc) snap_at = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--sd")     && i + 1 < argc) sd_path = argv[++i];
         else if (!strcmp(argv[i], "--nmi-at") && i + 1 < argc) nmi_at = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--reset-at") && i + 1 < argc) reset_at = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--esx"))                    esx = true;
         else if (!strcmp(argv[i], "--sdlog"))                  { /* set below */ }
         else if (!strcmp(argv[i], "--expect-snap"))            { snap = true; expect_snap = true; }
@@ -253,6 +255,15 @@ int main(int argc, char** argv) {
                 frame_no++;
                 if (nmi_at >= 0 && frame_no == nmi_at)     top.nmi_button = 1;
                 if (nmi_at >= 0 && frame_no == nmi_at + 2) top.nmi_button = 0;
+                if (frame_no == reset_at) {
+                    // Soft reset mid-run: what KEY[0] does on the board. The
+                    // machine's block RAMs keep their contents, exactly like
+                    // hardware between configurations.
+                    printf("  reset at frame %d\n", frame_no);
+                    top.rst = 1;
+                    for (int k = 0; k < 16; k++) { top.clk = 0; top.eval(); top.clk = 1; top.eval(); }
+                    top.rst = 0;
+                }
                 if (frame_no == snap_at) {
                     // The bug this guards: block RAM init is configuration-
                     // time only, so an armed reset must REFILL RAM from the

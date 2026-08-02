@@ -132,3 +132,29 @@ native 3.3 V.
   tools/make_sd_image.py (MBR+FAT16 builder) and tools/make_test_tap.py
   (copyright-free autostart TAP) support `make esx`. Suite: 142 checks.
   Remaining: hardware wiring (6 pins) + recompile with esxdos.hex.
+- 2026-08-03: first hardware boot -- banner and traps work on silicon, but
+  the card conversation fails ("Detecting Devices..." forever). Three
+  changes from the debugging session:
+    1. SD diagnostics: in divMMC mode HEX1:0 shows the last SPI byte the
+       CPU read from the card (FF = card never answers -> wiring; 01 =
+       stuck in idle -> init protocol; other = further downstream) and
+       HEX3:2 counts exchanges. HEX5:4 stay PS/2. Weak pull-up on MISO.
+    2. divRAM wipe on divMMC reset: esxDOS keeps a warm-boot marker in
+       divRAM, which survives soft reset in block RAM -- so every boot
+       after the first silently skipped the banner and device detection
+       straight into BASIC ("SW0 stopped working"). Reproduced in sim
+       with the new `--reset-at N` harness flag; now a reset that enters
+       divMMC mode zeroes all 64K first (~4.7 ms inside the reset).
+       `make esx ... RESET=150` is the regression. Snapshot-armed resets
+       never wipe. Corollary kept: a divMMC boot still clobbers the
+       snapshot shadow, so SW[1] replay works until the first SW[0] boot,
+       then needs reprogramming.
+    3. SD model: deselect now aborts the operation in flight (a real
+       card's CS behaviour); a mid-CMD18 host reset used to leave the
+       model streaming stale blocks into the next boot's CMD0.
+  Also learned the hard way: boottest/snaptest overwrite out/*.hex with
+  test ROMs -- run `make esx`, never the boot_tb binary directly.
+  Observed on hardware, expected: KEY[1] under the plain 48K ROM is a
+  warm reset (the ROM's NMI-through-NMIADD=0 bug), and a SUCCESSFUL
+  esxDOS boot also ends at (c) 1982 a few seconds after the module list
+  -- that's the normal handover to BASIC, hooks armed.

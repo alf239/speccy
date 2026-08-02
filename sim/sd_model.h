@@ -169,11 +169,24 @@ struct SdModel {
     }
 
     // Advance one system clock; returns MISO level.
+    bool prev_cs_n = true;
     bool step(bool cs_n, bool sck, bool mosi) {
         if (cs_n) {                                    // deselected: reset framing
+            if (!prev_cs_n) {
+                // Deselect aborts the operation in flight, like a real card:
+                // output stops, a half-received command or write is dropped.
+                // Without this a host reset mid-CMD18 leaves the model
+                // streaming stale blocks at the next boot's CMD0.
+                cmd.clear();
+                out_q.clear(); out_pos = 0;
+                multi_read = false;
+                expecting_data = false; wr_buf.clear();
+            }
+            prev_cs_n = true;
             last_sck = sck; bit_idx = 0; miso_level = true;
             return true;
         }
+        prev_cs_n = false;
         if (sck && !last_sck) {                        // rising: sample MOSI
             in_byte = (uint8_t)((in_byte << 1) | (mosi ? 1 : 0));
             if (++bit_idx == 8) {

@@ -182,16 +182,20 @@ sdtest: $(SD_EXE)
 
 # esxDOS boot in simulation:
 #   make esx ROM=48.rom ESX=path/to/ESXMMC.BIN SDDIR=path/to/esxdos-unzipped
-#            [FRAMES=n] [NMI=frame]
+#            [FRAMES=n] [NMI=frame] [RESET=frame]
+# RESET=n soft-resets mid-run (what KEY[0] does): the frames after it must
+# show a full cold boot again -- banner, detection, mount -- thanks to the
+# divRAM wipe. NB: boottest/snaptest overwrite out/*.hex with test ROMs, so
+# always rerun this target rather than invoking the boot_tb binary directly.
 esx: $(BOOT_EXE)
-	@test -n "$(ROM)" -a -n "$(ESX)" -a -n "$(SDDIR)" || { echo "usage: make esx ROM=48.rom ESX=ESXMMC.BIN SDDIR=esxdos-dir [FRAMES=n] [NMI=frame]"; exit 1; }
+	@test -n "$(ROM)" -a -n "$(ESX)" -a -n "$(SDDIR)" || { echo "usage: make esx ROM=48.rom ESX=ESXMMC.BIN SDDIR=esxdos-dir [FRAMES=n] [NMI=frame] [RESET=frame]"; exit 1; }
 	@mkdir -p out
 	python3 tools/bin2hex.py $(ROM) out/bootrom.hex
 	python3 tools/bin2hex.py $(ESX) out/esxdos.hex 8192
 	python3 tools/make_test_tap.py out/hello.tap
 	python3 tools/make_sd_image.py out/sd.img --tree $(SDDIR) --add out/hello.tap=GAMES/HELLO.TAP
 	./$(BOOT_EXE) --esx --sd out/sd.img --frames $(or $(FRAMES),250) \
-	  $(if $(NMI),--nmi-at $(NMI),) --out out/esx.bmp
+	  $(if $(NMI),--nmi-at $(NMI),) $(if $(RESET),--reset-at $(RESET),) --out out/esx.bmp
 	@echo "wrote out/esx.bmp"
 
 # Everything that can be checked without hardware.

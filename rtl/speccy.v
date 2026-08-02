@@ -134,7 +134,14 @@ module speccy #(
     wire [15:0] caddr;       // 0..49151 over the copy
     wire        cwrite;      // write strobe, data valid on divram_q
 
-    assign boot_busy = copying;
+    // divRAM wipe (driven by the divMMC logic below): a reset that enters
+    // divMMC mode zeroes all 64K first, so esxDOS always cold-boots -- banner,
+    // device detection, the lot. Without this its warm-boot marker survives
+    // soft reset in block RAM and every later boot silently skips to BASIC.
+    wire        wiping;
+    wire [15:0] wctr;
+
+    assign boot_busy = copying || wiping;
 
     // The 0x4000 bank needs two ports: CPU on one, video on the other. The
     // boot copier borrows the CPU port while the CPU is held in reset.
@@ -279,11 +286,13 @@ module speccy #(
     // snapshot replay to once-per-programming until reprogrammed.
     wire        div_low   = divmap && (cpu_a[15:13] == 3'b000);  // 0x0000-1FFF
     wire        div_win   = divmap && (cpu_a[15:13] == 3'b001);  // 0x2000-3FFF
-    wire [15:0] divram_a  = copying ? caddr :
+    wire [15:0] divram_a  = wiping  ? wctr :
+                            copying ? caddr :
                             div_low ? {3'd3, cpu_a[12:0]}
                                     : {divbank, cpu_a[12:0]};
     wire        bank3_wp  = mapram && (div_low || (div_win && divbank == 3'd3));
-    wire        divram_we = !copying && mem_wr && div_win && !bank3_wp;
+    wire        divram_we = wiping ||
+                            (!copying && mem_wr && div_win && !bank3_wp);
 
     // I/O decode (full low byte; A0=1 so the ULA never collides)
     wire io_e3 = div_on && (cpu_a[7:0] == 8'hE3);
@@ -293,7 +302,7 @@ module speccy #(
     generate
         if (HAS_AUX) begin : g_divram
             ram #(.ADDR_W(16), .INIT_FILE(SNAP_FILE)) u_divram (
-                .clk (clk), .addr (divram_a), .din (cpu_do),
+                .clk (clk), .addr (divram_a), .din (wiping ? 8'd0 : cpu_do),
                 .we (divram_we), .dout (divram_q)
             );
         end else begin : g_no_divram
@@ -310,6 +319,23 @@ module speccy #(
                 .clk (clk), .addr (cpu_a[12:0]), .din (8'd0),
                 .we (1'b0), .dout (esx_q)
             );
+
+            // The wipe pass: 64K zeroes in ~4.7 ms while the CPU sits in
+            // reset. Triggered only when a reset ENTERS divMMC mode -- a
+            // snapshot-armed reset must keep the shadow, so it never wipes.
+            reg        wipe_r;
+            reg [15:0] wipe_ctr;
+            always @(posedge clk) begin
+                if (rst) begin
+                    wipe_r   <= divmmc_en && !arm_snapshot;
+                    wipe_ctr <= 16'd0;
+                end else if (wipe_r) begin
+                    if (wipe_ctr == 16'hFFFF) wipe_r <= 1'b0;
+                    wipe_ctr <= wipe_ctr + 16'd1;
+                end
+            end
+            assign wiping = wipe_r;
+            assign wctr   = wipe_ctr;
 
             // SD init demands <=400 kHz; after 1024 exchanges (well past any
             // init conversation) the clock steps up to 7 MHz. The WAIT
@@ -406,6 +432,8 @@ module speccy #(
             assign eb_r_lat   = 1'b0;
             assign eb_rd_hold = 8'hFF;
             assign dbg_sd     = 16'h0000;
+            assign wiping     = 1'b0;
+            assign wctr       = 16'd0;
             assign sd_sck   = 1'b0;
             assign sd_mosi  = 1'b1;
             always @(posedge clk) begin
