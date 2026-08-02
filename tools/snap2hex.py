@@ -88,10 +88,15 @@ def parse_z80(path):
                 off = page_base[page] - 0x4000
                 mem[off:off + len(blk)] = blk[:16384]
 
-    if r["pc"] < 0x4000:
-        print(f"WARNING: PC=0x{r['pc']:04X} is in ROM -- the overlay disarms "
-              f"on the first fetch >= 0x0100, so this snapshot (taken inside "
-              f"a ROM routine) will not resume correctly.")
+    if r["pc"] < 0x0100:
+        print(f"WARNING: PC=0x{r['pc']:04X} is inside the overlay's shadow "
+              f"(0x0000-0x00FF) -- the stub occupies that region at boot, so "
+              f"this snapshot cannot resume correctly.")
+    elif r["pc"] < 0x4000:
+        print(f"note: PC=0x{r['pc']:04X} resumes inside a ROM routine "
+              f"(typically PAUSE or a keyboard wait -- normal for menu "
+              f"snapshots). The overlay only shadows 0x0000-0x00FF, so this "
+              f"is fine.")
 
     return r, bytes(mem), version
 
@@ -151,11 +156,14 @@ def main():
     r, mem, version = parse_z80(snap)
     write_hex(os.path.join(outdir, "snap_vram.hex"), mem[:16384])
     write_hex(os.path.join(outdir, "snap_ram.hex"),  mem[16384:])
+    # Combined 64K image: the divRAM doubles as the snapshot shadow.
+    write_hex(os.path.join(outdir, "snap_all.hex"),  mem + bytes(16384))
     write_hex(os.path.join(outdir, "snap_stub.hex"), build_stub(r))
 
     print(f"{snap}: v{version}, PC=0x{r['pc']:04X} SP=0x{r['sp']:04X} "
           f"IM{r['im']} {'EI' if r['iff1'] else 'DI'} border={r['border']}")
-    print(f"wrote snap_vram.hex, snap_ram.hex, snap_stub.hex to {outdir}/")
+    print(f"wrote snap_vram.hex, snap_ram.hex, snap_all.hex, snap_stub.hex "
+          f"to {outdir}/")
 
 
 if __name__ == "__main__":

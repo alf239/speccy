@@ -48,13 +48,18 @@ joytest: $(JOY_EXE)
 BUS_MDIR := obj_dir_bus
 BUS_EXE  := $(BUS_MDIR)/bus_tb
 BUS_RTL  := rtl/video_timing.v rtl/vram.v rtl/ram.v rtl/video.v rtl/palette.v \
-            rtl/scandoubler.v rtl/keyboard.v rtl/speccy.v sim/speccy_tb_top.v
+            rtl/scandoubler.v rtl/keyboard.v rtl/spi_master.v rtl/speccy.v \
+            sim/speccy_tb_top.v
 
 # Known ROM contents for the bus tests; must match test_rom_byte() in bus_tb.cpp
 sim/test_rom.hex:
 	@python3 -c "print('\n'.join('%02X' % ((i*7+3)&0xFF) for i in range(16384)))" > $@
 
-$(BUS_EXE): $(BUS_RTL) sim/bus_tb.cpp sim/test_rom.hex
+# Known esxDOS-slot contents; must match esx_rom_byte() in bus_tb.cpp
+sim/esx_rom.hex:
+	@python3 -c "print('\n'.join('%02X' % ((i*11+5)&0xFF) for i in range(8192)))" > $@
+
+$(BUS_EXE): $(BUS_RTL) sim/bus_tb.cpp sim/test_rom.hex sim/esx_rom.hex
 	$(VERILATOR) --cc --exe --build -j 0 --top-module speccy_tb_top \
 	  --Mdir $(BUS_MDIR) -o bus_tb \
 	  -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY \
@@ -69,8 +74,8 @@ CPU_EXE  := $(CPU_MDIR)/cpu_tb
 TV80_RTL := rtl/tv80/tv80s.v rtl/tv80/tv80_core.v rtl/tv80/tv80_alu.v \
             rtl/tv80/tv80_mcode.v rtl/tv80/tv80_reg.v
 CPU_RTL  := rtl/video_timing.v rtl/vram.v rtl/ram.v rtl/video.v rtl/palette.v \
-            rtl/scandoubler.v rtl/keyboard.v rtl/speccy.v rtl/speccy48.v \
-            $(TV80_RTL) sim/speccy48_tb_top.v
+            rtl/scandoubler.v rtl/keyboard.v rtl/spi_master.v rtl/speccy.v \
+            rtl/speccy48.v $(TV80_RTL) sim/speccy48_tb_top.v
 
 sim/cpu_rom.hex: sim/make_cpu_rom.py
 	python3 sim/make_cpu_rom.py $@
@@ -90,7 +95,7 @@ cputest: $(CPU_EXE)
 BOOT_MDIR := obj_dir_boot
 BOOT_EXE  := $(BOOT_MDIR)/boot_tb
 BOOT_RTL  := rtl/video_timing.v rtl/vram.v rtl/ram.v rtl/video.v rtl/palette.v \
-             rtl/ps2_rx.v rtl/ps2_keyboard.v \
+             rtl/ps2_rx.v rtl/ps2_keyboard.v rtl/spi_master.v \
              rtl/scandoubler.v rtl/keyboard.v rtl/speccy.v rtl/speccy48.v \
              $(TV80_RTL) sim/boot_tb_top.v
 # The ROM path is baked in as out/bootrom.hex; the file is re-generated per
@@ -105,6 +110,8 @@ $(BOOT_EXE): $(BOOT_RTL) sim/boot_tb.cpp
 	  -GVRAM_FILE='"out/snap_vram.hex"' \
 	  -GRAM_FILE='"out/snap_ram.hex"' \
 	  -GSTUB_FILE='"out/snap_stub.hex"' \
+	  -GSNAP_FILE='"out/snap_all.hex"' \
+	  -GDIVMMC_ROM='"out/esxdos.hex"' \
 	  tv80.vlt $(BOOT_RTL) sim/boot_tb.cpp
 
 # Placeholder snapshot files so non-snapshot runs stay warning-free.
@@ -113,6 +120,8 @@ out/snap_stub.hex:
 	@python3 -c "print('00\n'*256, end='')"   > out/snap_stub.hex
 	@python3 -c "print('00\n'*16384, end='')" > out/snap_vram.hex
 	@python3 -c "print('00\n'*32768, end='')" > out/snap_ram.hex
+	@python3 -c "print('00\n'*8192, end='')"  > out/esxdos.hex
+	@python3 -c "print('00\n'*65536, end='')" > out/snap_all.hex
 
 boottest: $(BOOT_EXE) sim/cpu_rom.hex out/snap_stub.hex
 	@mkdir -p out
@@ -147,6 +156,7 @@ snaptest: $(BOOT_EXE) sim/cpu_rom.hex
 	python3 tools/snap2hex.py out/test.z80 out
 	cp sim/cpu_rom.hex out/bootrom.hex
 	./$(BOOT_EXE) --frames 8 --expect-snap --out out/snap_test.bmp
+	./$(BOOT_EXE) --frames 8 --snap-at 2 --expect-snap --out out/snap_rearm.bmp
 
 # Boot a real snapshot:  make snap SNAP=game.z80 ROM=48.rom [FRAMES=n]
 snap: $(BOOT_EXE)
@@ -157,13 +167,40 @@ snap: $(BOOT_EXE)
 	./$(BOOT_EXE) --snap --frames $(or $(FRAMES),16) --out out/snap.bmp
 	@echo "wrote out/snap.bmp"
 
+# SPI master + behavioural SD card.
+SD_MDIR := obj_dir_sd
+SD_EXE  := $(SD_MDIR)/sd_tb
+
+$(SD_EXE): rtl/spi_master.v sim/sd_model.h sim/sd_tb.cpp
+	$(VERILATOR) --cc --exe --build -j 0 --top-module spi_master \
+	  --Mdir $(SD_MDIR) -o sd_tb \
+	  -Wall -Wno-DECLFILENAME \
+	  rtl/spi_master.v sim/sd_tb.cpp
+
+sdtest: $(SD_EXE)
+	./$(SD_EXE)
+
+# esxDOS boot in simulation:
+#   make esx ROM=48.rom ESX=path/to/ESXMMC.BIN SDDIR=path/to/esxdos-unzipped
+#            [FRAMES=n] [NMI=frame]
+esx: $(BOOT_EXE)
+	@test -n "$(ROM)" -a -n "$(ESX)" -a -n "$(SDDIR)" || { echo "usage: make esx ROM=48.rom ESX=ESXMMC.BIN SDDIR=esxdos-dir [FRAMES=n] [NMI=frame]"; exit 1; }
+	@mkdir -p out
+	python3 tools/bin2hex.py $(ROM) out/bootrom.hex
+	python3 tools/bin2hex.py $(ESX) out/esxdos.hex 8192
+	python3 tools/make_test_tap.py out/hello.tap
+	python3 tools/make_sd_image.py out/sd.img --tree $(SDDIR) --add out/hello.tap=GAMES/HELLO.TAP
+	./$(BOOT_EXE) --esx --sd out/sd.img --frames $(or $(FRAMES),250) \
+	  $(if $(NMI),--nmi-at $(NMI),) --out out/esx.bmp
+	@echo "wrote out/esx.bmp"
+
 # Everything that can be checked without hardware.
-test: run joytest bustest cputest boottest ps2test snaptest
+test: run joytest bustest cputest boottest ps2test snaptest sdtest
 
 lint:
 	$(VERILATOR) --lint-only --top-module $(TOP) -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY $(RTL)
 
 clean:
-	rm -rf $(MDIR) $(JOY_MDIR) $(BUS_MDIR) $(CPU_MDIR) $(BOOT_MDIR) $(PS2_MDIR) out sim/test_rom.hex sim/cpu_rom.hex
+	rm -rf $(MDIR) $(JOY_MDIR) $(BUS_MDIR) $(CPU_MDIR) $(BOOT_MDIR) $(PS2_MDIR) $(SD_MDIR) out sim/test_rom.hex sim/esx_rom.hex sim/cpu_rom.hex
 
-.PHONY: all run open lint clean joytest bustest cputest boottest boot ps2test snaptest snap test
+.PHONY: all run open lint clean joytest bustest cputest boottest boot ps2test snaptest snap sdtest esx test

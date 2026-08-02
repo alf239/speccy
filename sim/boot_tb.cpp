@@ -8,7 +8,7 @@
 // itself makes sense.
 //
 //   boot_tb [--frames N] [--out FILE.bmp] [--all] [--expect-smoke]
-//           [--type "STRING"] [--type-at FRAME]
+//           [--type "STRING"] [--type-at FRAME] [--wav FILE.wav]
 //
 // --all dumps every frame (boot animation); default dumps only the last.
 // --expect-smoke asserts on the smoke-test ROM's known output, making this
@@ -20,6 +20,7 @@
 
 #include <verilated.h>
 #include "Vboot_tb_top.h"
+#include "sd_model.h"
 
 #include <cstdio>
 #include <cstring>
@@ -147,16 +148,27 @@ int main(int argc, char** argv) {
     std::string outfile = "out/boot.bmp";
 
     std::string type_str;
+    std::string wav_path;
     int type_at = 120;
     bool snap = false, expect_snap = false;
+    int  snap_at = -1;                 // re-arm + reset at this frame
+    std::string sd_path;
+    bool esx = false;
+    int  nmi_at = -1;
 
     for (int i = 1; i < argc; i++) {
         if      (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--out")    && i + 1 < argc) outfile = argv[++i];
         else if (!strcmp(argv[i], "--type")   && i + 1 < argc) type_str = argv[++i];
+        else if (!strcmp(argv[i], "--wav")    && i + 1 < argc) wav_path = argv[++i];
         else if (!strcmp(argv[i], "--type-at")&& i + 1 < argc) type_at = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--all"))                    all = true;
         else if (!strcmp(argv[i], "--snap"))                   snap = true;
+        else if (!strcmp(argv[i], "--snap-at") && i + 1 < argc) snap_at = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--sd")     && i + 1 < argc) sd_path = argv[++i];
+        else if (!strcmp(argv[i], "--nmi-at") && i + 1 < argc) nmi_at = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--esx"))                    esx = true;
+        else if (!strcmp(argv[i], "--sdlog"))                  { /* set below */ }
         else if (!strcmp(argv[i], "--expect-snap"))            { snap = true; expect_snap = true; }
         else if (!strcmp(argv[i], "--expect-smoke"))           expect_smoke = true;
     }
@@ -168,6 +180,24 @@ int main(int argc, char** argv) {
     top.rst = 1; top.key_matrix = 0; top.joy_state = 0; top.ear_in = 1;
     top.ps2_clk = 1; top.ps2_data = 1;
     top.arm_snapshot = snap ? 1 : 0;
+    top.divmmc_en = esx ? 1 : 0;
+    top.nmi_button = 0;
+    top.sd_miso = 1;
+
+    SdModel* card = nullptr;
+    if (!sd_path.empty()) {
+        FILE* f = fopen(sd_path.c_str(), "rb");
+        if (!f) { fprintf(stderr, "cannot open %s\n", sd_path.c_str()); return 1; }
+        fseek(f, 0, SEEK_END);
+        long sz = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        card = new SdModel((size_t)(sz + 511) / 512);
+        if (fread(card->disk.data(), 1, sz, f) != (size_t)sz) { fprintf(stderr, "short read\n"); return 1; }
+        fclose(f);
+        printf("SD image: %s (%ld bytes)\n", sd_path.c_str(), sz);
+        for (int i = 1; i < argc; i++)
+            if (!strcmp(argv[i], "--sdlog")) card->verbose = true;
+    }
     for (int i = 0; i < 16; i++) { top.clk = 0; top.eval(); top.clk = 1; top.eval(); }
     top.rst = 0;
 
@@ -184,6 +214,10 @@ int main(int argc, char** argv) {
     if (!type_str.empty()) typist.program(type_str);
     bool typing_started = false;
 
+    // Speaker capture: sample every 320 clks -> 43750 Hz, 8-bit mono.
+    std::vector<uint8_t> audio;
+    int wav_div = 0;
+
     while (frame_no < frames) {
         if (typing_started && !typist.done()) {
             uint8_t pc, pd;
@@ -192,6 +226,12 @@ int main(int argc, char** argv) {
         }
         top.clk = 0; top.eval();
         top.clk = 1; top.eval();
+        if (card) top.sd_miso = card->step(top.sd_cs, top.sd_sck, top.sd_mosi) ? 1 : 0;
+
+        if (!wav_path.empty() && ++wav_div == 320) {
+            wav_div = 0;
+            audio.push_back(top.speaker ? 220 : 36);
+        }
 
         const bool hs = top.vga_hsync, vs = top.vga_vsync;
 
@@ -211,6 +251,18 @@ int main(int argc, char** argv) {
                     write_bmp(path, fb.data(), W, H);
                 }
                 frame_no++;
+                if (nmi_at >= 0 && frame_no == nmi_at)     top.nmi_button = 1;
+                if (nmi_at >= 0 && frame_no == nmi_at + 2) top.nmi_button = 0;
+                if (frame_no == snap_at) {
+                    // The bug this guards: block RAM init is configuration-
+                    // time only, so an armed reset must REFILL RAM from the
+                    // shadow, not resume registers over stale memory.
+                    printf("  re-arming snapshot + reset at frame %d\n", frame_no);
+                    top.arm_snapshot = 1;
+                    top.rst = 1;
+                    for (int k = 0; k < 16; k++) { top.clk = 0; top.eval(); top.clk = 1; top.eval(); }
+                    top.rst = 0;
+                }
                 if (!type_str.empty() && frame_no == type_at) {
                     typing_started = true;
                     printf("  typing \"%s\" from frame %d\n", type_str.c_str(), type_at);
@@ -274,6 +326,25 @@ int main(int argc, char** argv) {
         // cyan pixels (doubled = a handful). Loose bounds, deliberately.
         if (red < 100000) { fprintf(stderr, "FAIL: expected a red border\n"); failures++; }
         if (other_nonblack < 4) { fprintf(stderr, "FAIL: expected the written screen byte\n"); failures++; }
+    }
+
+    if (!wav_path.empty()) {
+        FILE* wf = fopen(wav_path.c_str(), "wb");
+        if (wf) {
+            const uint32_t rate = 43750, dsz = (uint32_t)audio.size();
+            uint8_t h[44] = {'R','I','F','F',0,0,0,0,'W','A','V','E','f','m','t',' ',
+                             16,0,0,0, 1,0, 1,0, 0,0,0,0, 0,0,0,0, 1,0, 8,0,
+                             'd','a','t','a',0,0,0,0};
+            uint32_t riff = 36 + dsz;
+            memcpy(h+4,  &riff, 4);
+            memcpy(h+24, &rate, 4);
+            memcpy(h+28, &rate, 4);   // byte rate = rate * 1ch * 1B
+            memcpy(h+40, &dsz,  4);
+            fwrite(h, 1, 44, wf);
+            fwrite(audio.data(), 1, dsz, wf);
+            fclose(wf);
+            printf("wrote %s: %.1f s of beeper\n", wav_path.c_str(), dsz/(double)rate);
+        }
     }
 
     top.final();

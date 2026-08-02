@@ -38,6 +38,7 @@ set_global_assignment -name VERILOG_FILE ../rtl/ps2_rx.v
 set_global_assignment -name VERILOG_FILE ../rtl/ps2_keyboard.v
 set_global_assignment -name VERILOG_FILE ../rtl/joystick.v
 set_global_assignment -name VERILOG_FILE ../rtl/key_tap.v
+set_global_assignment -name VERILOG_FILE ../rtl/spi_master.v
 set_global_assignment -name VERILOG_FILE ../rtl/speccy.v
 set_global_assignment -name VERILOG_FILE ../rtl/speccy48.v
 set_global_assignment -name VERILOG_FILE ../rtl/speccy_video_top.v

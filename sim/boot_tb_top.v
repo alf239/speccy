@@ -5,14 +5,22 @@
 `default_nettype none
 
 module boot_tb_top #(
-    parameter ROM_FILE  = "sim/cpu_rom.hex",
-    parameter VRAM_FILE = "",
-    parameter RAM_FILE  = "",
-    parameter STUB_FILE = ""
+    parameter ROM_FILE   = "sim/cpu_rom.hex",
+    parameter VRAM_FILE  = "",
+    parameter RAM_FILE   = "",
+    parameter STUB_FILE  = "",
+    parameter SNAP_FILE  = "",
+    parameter DIVMMC_ROM = ""
 )(
     input  wire        clk,
     input  wire        rst,
     input  wire        arm_snapshot,
+    input  wire        divmmc_en,
+    input  wire        nmi_button,
+    output wire        sd_cs,
+    output wire        sd_sck,
+    output wire        sd_mosi,
+    input  wire        sd_miso,
 
     input  wire [39:0] key_matrix,   // OR-ed with the PS/2-derived matrix
     input  wire        ps2_clk,
@@ -49,9 +57,14 @@ module boot_tb_top #(
     );
 
     speccy48 #(.ROM_FILE(ROM_FILE), .VRAM_FILE(VRAM_FILE),
-               .RAM_FILE(RAM_FILE), .STUB_FILE(STUB_FILE)) u_ss (
+               .RAM_FILE(RAM_FILE), .STUB_FILE(STUB_FILE),
+               .SNAP_FILE(SNAP_FILE), .DIVMMC_ROM(DIVMMC_ROM)) u_ss (
         .clk          (clk),
         .rst          (rst),
+        .divmmc_en    (divmmc_en),
+        .nmi_button   (nmi_button),
+        .sd_cs (sd_cs), .sd_sck (sd_sck), .sd_mosi (sd_mosi),
+        .sd_miso (sd_miso),
         .arm_snapshot (arm_snapshot),
         .key_matrix (key_matrix | ps2_matrix),
         .joy_state  (joy_state),

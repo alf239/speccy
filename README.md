@@ -9,6 +9,18 @@ can make one.
 
 ## Status
 
+**Phase 1 complete (2026-08-02): the 48K machine is done.** Keyboard (a
+stickered AT board through a DIN-5 socket), Kempston joystick, beeper,
+snapshot boot, and — in simulation, wiring pending — esxDOS loading from SD.
+Saboteur II is played on it daily by people born four decades after its
+release, which was the whole point.
+
+![Phase 1: the complete machine](docs/img/phase1.jpg)
+
+*Saboteur II mid-game; DE10-Lite wearing its DIN-5/piezo hat; an AT keyboard
+hand-stickered with Sinclair keyword legends; one Atari-pattern joystick,
+still on active duty.*
+
 **The machine boots.** TV80 executing the real 48K ROM against the full video
 chain, captured by a testbench that locks onto the sync stream exactly as a
 monitor would:
@@ -143,8 +155,8 @@ software) doing the filesystem work. Roughly 500 LE instead of a WD1793 emulatio
 - [x] **0** — video generator + Verilator harness
 - [x] **1a** — scandoubler, 15.625 → 31.25 kHz
 - [x] **1c** — Kempston joystick (no CPU needed — it's five switches to ground)
-- [ ] **1b** — VGA output on hardware; tune sync placement against a real monitor
-- [ ] **2** — video reading a static screen from block RAM, on hardware
+- [x] **1b/2** — superseded: hardware bring-up jumped straight to the full
+  machine (3d), which subsumed both
 - [x] **3a** — machine around the CPU socket: memory map, ULA ports, keyboard
   matrix, Kempston decode, 50 Hz INT — verified by a testbench acting as the Z80
 - [x] **3b** — TV80 core vendored and in the socket; smoke-test ROM confirms
@@ -155,12 +167,15 @@ software) doing the filesystem work. Roughly 500 LE instead of a WD1793 emulatio
 - [x] **3e** — PS/2 receiver + scancode→matrix mapper; the testbench types
   `10 P"hello"` / `R` into the real ROM over simulated PS/2 traffic and BASIC
   runs it (`make boot ROM=48.rom TYPE='...'`)
-- [ ] **3f** — the physical keyboard (wiring: see the bring-up doc)
+- [x] **3f** — the physical keyboard: AT (DIN-5) after two dead PS/2 ends —
+  same protocol, older connector, working (2026-08-02)
 - [x] **3g** — snapshot loader: `.z80` → block RAM + a generated register-restore
   stub served from a boot overlay. `make snap SNAP=game.z80 ROM=48.rom` boots it
   in simulation; on hardware, SW[1] + reset boots straight into the game
-- [ ] **4** — beeper
-- [ ] **5** — divMMC + SD card → **Saboteur II from SD, no recompile**
+- [x] **4** — beeper: piezo direct-drive + line-out divider
+- [x] **5 (sim)** — divMMC + esxDOS 0.8.9 boots in simulation: FAT16 mount,
+  NMI browser, four protocol lessons in the stage-5 doc
+- [ ] **5 (hw)** — six wires to the SD breakout + recompile → games from card
 
 Phase 2, if it stays interesting: SDRAM, 128K paging, AY, and eventually the
 Scorpion's extended paging, 7 MHz turbo and that excellent ROM-resident debugger.

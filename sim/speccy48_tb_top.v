@@ -35,6 +35,9 @@ module speccy48_tb_top (
     speccy48 #(.ROM_FILE("sim/cpu_rom.hex")) u_ss (
         .clk          (clk),
         .rst          (rst),
+        .divmmc_en    (1'b0),
+        .nmi_button   (1'b0),
+        .sd_cs (), .sd_sck (), .sd_mosi (), .sd_miso (1'b1),
         .arm_snapshot (1'b0),
         .key_matrix (key_matrix),
         .joy_state  (joy_state),

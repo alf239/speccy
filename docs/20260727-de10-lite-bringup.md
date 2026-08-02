@@ -410,3 +410,39 @@ Format notes: .z80 v1/v2/v3, 48K only, compressed or not. TAP/TZX are tape
 *recordings* — they need the divMMC (stage 5) or an EAR-line player; the
 snapshot path sidesteps both. A game change is a recompile (~3 min) until
 stage 5 makes it an SD-card file copy.
+
+### Snapshot re-boot: why it needs the shadow copier
+
+Block RAM initialization happens at FPGA **configuration**, not at reset. The
+first design relied on init alone, so the snapshot booted only on the first
+reset after programming — any later SW[1]+KEY[0] resumed the snapshot's
+*registers* over whatever RAM held by then (symptom: your old BASIC screen,
+frozen in the resumed PAUSE loop).
+
+Fix: the snapshot lives twice. The main banks get it at configuration; a
+never-written shadow pair keeps it pristine, and an armed reset holds the CPU
+for ~7 ms while a copier refills all 48K from the shadow. SW[1]+KEY[0] now
+boots the game every time — which a game about dying frequently requires.
+
+### Piezo option (as built, 2026-07-29)
+
+A piezo buzzer on the divider is quiet -- it is a capacitive load being fed
+the attenuated line-level signal. Drive it directly instead:
+
+    hole "P26" (pin 37) --[ 47R ]-- piezo --- GND
+
+Full-swing 3.3 V, ~20 dB louder than via the divider. The divider + 1 uF
+stays in place for powered speakers / the phase-2 AY path. Expect the piezo
+to colour the sound around its resonance -- authentic enough for a beeper.
+
+### DIN-5 socket variant (AT keyboard, as built 2026-08-02)
+
+AT = PS/2 protocol in the older connector. Female socket, FRONT view, key at
+6 o'clock, pins arching the top: 1(clock) at 9:00, 4(GND) 10:30, 2(data)
+12:00, 5(+5V) 1:30, 3(NC) 3:00. SOLDER-SIDE VIEW IS MIRRORED -- pin 1 at
+3 o'clock from behind; trust embossed digits over any diagram.
+
+Wiring: pin 1 -> 2.2k -> header 31 (`P06`); pin 2 -> 2.2k -> header 33
+(`P13`); pin 5 -> straight -> header 11 (`P17`, 5V); pin 4 + housing ->
+ground. Pin 3 empty. Meter 5V at the 1:30 hole before the keyboard mates:
+a 4/5 swap is reversed power, the one destructive mistake available.
