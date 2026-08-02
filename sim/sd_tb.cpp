@@ -147,6 +147,21 @@ int main(int argc, char** argv) {
     xfer(0xFF); xfer(0xFF);                        // CRC
     check("block payload errors", bad, 0);
 
+    // CMD18: stream two blocks, then CMD12 stops the flow.
+    check("CMD18 R1",            sd_cmd(18, 1), 0x00);
+    for (int blk = 1; blk <= 2; blk++) {
+        uint8_t t = 0xFF;
+        for (int i = 0; i < 16 && t == 0xFF; i++) t = xfer(0xFF);
+        check("CMD18 token",     t, 0xFE);
+        int mbad = 0;
+        for (int i = 0; i < 512; i++)
+            if (xfer(0xFF) != card->disk[blk * 512 + i]) mbad++;
+        xfer(0xFF); xfer(0xFF);
+        check("CMD18 payload",   mbad, 0);
+    }
+    check("CMD12 stops",         sd_cmd(12, 0), 0x00);
+    check("bus idle after stop", xfer(0xFF), 0xFF);
+
     // Write LBA 5, read it back.
     check("CMD24 R1",            sd_cmd(24, 5), 0x00);
     xfer(0xFE);                                    // data token

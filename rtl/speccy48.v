@@ -12,6 +12,7 @@ module speccy48 #(
     parameter VRAM_FILE  = "",
     parameter RAM_FILE   = "",
     parameter STUB_FILE  = "",
+    parameter SNAP_FILE  = "",
     parameter DIVMMC_ROM = ""
 )(
     input  wire        clk,          // 14 MHz
@@ -87,7 +88,7 @@ module speccy48 #(
 
     speccy #(.ROM_FILE(ROM_FILE), .VRAM_FILE(VRAM_FILE),
              .RAM_FILE(RAM_FILE), .STUB_FILE(STUB_FILE),
-             .DIVMMC_ROM(DIVMMC_ROM)) u_machine (
+             .SNAP_FILE(SNAP_FILE), .DIVMMC_ROM(DIVMMC_ROM)) u_machine (
         .clk          (clk),
         .rst          (rst),
         .arm_snapshot (arm_snapshot),

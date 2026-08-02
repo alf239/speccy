@@ -32,6 +32,7 @@ module speccy #(
     parameter VRAM_FILE  = "",
     parameter RAM_FILE   = "",     // upper 32K init (snapshot loading)
     parameter STUB_FILE  = "",     // 256-byte snapshot boot overlay
+    parameter SNAP_FILE  = "",     // 64K combined snapshot image for divRAM
     parameter DIVMMC_ROM = "",     // 8K esxDOS image; empty = no divMMC
     // Interrupt: 32 T-states long on a 48K, asserted once per frame. The line
     // it starts on decides where "raster line 0" sits for timing-sensitive
@@ -123,11 +124,11 @@ module speccy #(
     );
 
     // Boot copier signals (driven by the snapshot logic below; idle when the
-    // machine has no snapshot support).
+    // machine has no snapshot support). Source data comes from the divRAM,
+    // whose configuration-time contents are the snapshot image.
     wire        copying;
     wire [15:0] caddr;       // 0..49151 over the copy
-    wire        cwrite;      // write strobe, data valid on sh_*_q
-    wire [7:0]  sh_lo_q, sh_hi_q;
+    wire        cwrite;      // write strobe, data valid on divram_q
 
     assign boot_busy = copying;
 
@@ -136,7 +137,7 @@ module speccy #(
     vram #(.ADDR_W(14), .INIT_FILE(VRAM_FILE)) u_vram (
         .clk    (clk),
         .a_addr (copying ? caddr[13:0] : cpu_a[13:0]),
-        .a_din  (copying ? sh_lo_q : cpu_do),
+        .a_din  (copying ? divram_q : cpu_do),
         .a_we   (copying ? (cwrite && !caddr[15] && !caddr[14])
                          : (mem_wr && (cpu_a[15:14] == 2'b01))),
         .a_dout (vram_q),
@@ -150,7 +151,7 @@ module speccy #(
     ram #(.ADDR_W(15), .INIT_FILE(RAM_FILE)) u_ramhi (
         .clk  (clk),
         .addr (copying ? caddr_hi : cpu_a[14:0]),
-        .din  (copying ? sh_hi_q : cpu_do),
+        .din  (copying ? divram_q : cpu_do),
         .we   (copying ? (cwrite && (caddr[15] || caddr[14]))
                        : (mem_wr && cpu_a[15])),
         .dout (ramhi_q)
@@ -181,20 +182,8 @@ module speccy #(
                 .we (1'b0), .dout (stub_q)
             );
 
-            // Shadow copies of the snapshot RAM. Same init files as the main
-            // banks (so the very first configuration boots even without a
-            // copy), but never written -- the pristine snapshot, kept.
-            ram #(.ADDR_W(14), .INIT_FILE(VRAM_FILE)) u_shadow_lo (
-                .clk (clk), .addr (caddr[13:0]), .din (8'd0),
-                .we (1'b0), .dout (sh_lo_q)
-            );
-            ram #(.ADDR_W(15), .INIT_FILE(RAM_FILE)) u_shadow_hi (
-                .clk (clk), .addr (caddr_hi[14:0]), .din (8'd0),
-                .we (1'b0), .dout (sh_hi_q)
-            );
-
-            // Two clocks per byte (read shadow, then write main): 48K in
-            // ~7 ms at 14 MHz, done during what looks like a long reset.
+            // Two clocks per byte (read divRAM shadow, then write main): 48K
+            // in ~7 ms at 14 MHz, done during what looks like a long reset.
             reg        copy_r;
             reg        cphase;              // 0: shadow read, 1: main write
             reg [15:0] ctr;
@@ -221,8 +210,6 @@ module speccy #(
             assign copying = 1'b0;
             assign caddr   = 16'd0;
             assign cwrite  = 1'b0;
-            assign sh_lo_q = 8'h00;
-            assign sh_hi_q = 8'h00;
         end
     endgenerate
 
@@ -241,18 +228,19 @@ module speccy #(
     // 0x2000-0x3FFF. Port 0xE7 bit0: SD /CS. Port 0xEB: SPI data exchange.
     // -----------------------------------------------------------------------
     localparam HAS_DIVMMC = (DIVMMC_ROM != "");
+    localparam HAS_AUX    = (STUB_FILE != "") || (DIVMMC_ROM != "");
 
     wire        div_on = divmmc_en && HAS_DIVMMC;
     wire [7:0]  esx_q, divram_q;
     reg         conmem, mapram, automap;
-    reg  [1:0]  divbank;
+    reg  [2:0]  divbank;           // 8 banks x 8K = 64K (esxDOS uses 5+)
     reg         sd_cs_r;
     reg         spi_start;
     reg  [7:0]  spi_tx;
     wire [7:0]  spi_rx;
     wire        spi_busy;
-
-    wire divmap = div_on && (automap || conmem);
+    wire        eb_r_lat;          // read latched + background exchange running
+    wire [7:0]  eb_rd_hold;        // the byte that read will return
 
     // M1 fetch tracking: decisions latch during the fetch, apply at its end.
     wire m1_fetch = mem_rd && !m1_n;
@@ -263,6 +251,15 @@ module speccy #(
         if (m1_fetch) fetch_a <= cpu_a;
     end
     wire fetch_end = m1_fetch_d && !m1_fetch;
+    // Two trap classes, per divIDE/divMMC spec: entry/exit points switch
+    // AFTER their M1 cycle (the trapped instruction runs from the old map),
+    // but 0x3D00-0x3DFF maps INSTANTLY -- the fetch itself must read divRAM,
+    // which is how both TR-DOS emulation and esxDOS's ROM-call trampoline
+    // (a RET planted at 0x3DFD) work. The sticky automap still latches at
+    // fetch end via entry_hit.
+    wire instant_3d = div_on && m1_fetch && (cpu_a[15:8] == 8'h3D);
+    wire divmap = (div_on && (automap || conmem)) || instant_3d;
+
 
     wire entry_hit = (fetch_a == 16'h0000) || (fetch_a == 16'h0008) ||
                      (fetch_a == 16'h0038) || (fetch_a == 16'h0066) ||
@@ -270,13 +267,19 @@ module speccy #(
                      (fetch_a[15:8] == 8'h3D);
     wire exit_hit  = (fetch_a[15:3] == 13'h03FF);        // 0x1FF8-0x1FFF
 
-    // divRAM addressing: bank 3 stands in for the ROM in MAPRAM mode.
+    // divRAM: one 64K array serving two masters. Banked 8K pages for the
+    // divMMC window (bank 3 stands in for the ROM in MAPRAM mode), and the
+    // snapshot shadow for the boot copier, which owns the port while the
+    // CPU is held in reset. Initialised from the snapshot image at
+    // configuration -- so esxDOS use overwrites the shadow, degrading
+    // snapshot replay to once-per-programming until reprogrammed.
     wire        div_low   = divmap && (cpu_a[15:13] == 3'b000);  // 0x0000-1FFF
     wire        div_win   = divmap && (cpu_a[15:13] == 3'b001);  // 0x2000-3FFF
-    wire [14:0] divram_a  = div_low ? {2'b11, cpu_a[12:0]}
+    wire [15:0] divram_a  = copying ? caddr :
+                            div_low ? {3'd3, cpu_a[12:0]}
                                     : {divbank, cpu_a[12:0]};
-    wire        bank3_wp  = mapram && (div_low || (div_win && divbank == 2'b11));
-    wire        divram_we = mem_wr && div_win && !bank3_wp;
+    wire        bank3_wp  = mapram && (div_low || (div_win && divbank == 3'd3));
+    wire        divram_we = !copying && mem_wr && div_win && !bank3_wp;
 
     // I/O decode (full low byte; A0=1 so the ULA never collides)
     wire io_e3 = div_on && (cpu_a[7:0] == 8'hE3);
@@ -284,14 +287,24 @@ module speccy #(
     wire io_eb = div_on && (cpu_a[7:0] == 8'hEB);
 
     generate
+        if (HAS_AUX) begin : g_divram
+            ram #(.ADDR_W(16), .INIT_FILE(SNAP_FILE)) u_divram (
+                .clk (clk), .addr (divram_a), .din (cpu_do),
+                .we (divram_we), .dout (divram_q)
+            );
+        end else begin : g_no_divram
+            /* verilator lint_off UNUSEDSIGNAL */
+            wire _aux_unused = &{divram_a, divram_we};
+            /* verilator lint_on UNUSEDSIGNAL */
+            assign divram_q = 8'hFF;
+        end
+    endgenerate
+
+    generate
         if (HAS_DIVMMC) begin : g_divmmc
             ram #(.ADDR_W(13), .INIT_FILE(DIVMMC_ROM)) u_esxrom (
                 .clk (clk), .addr (cpu_a[12:0]), .din (8'd0),
                 .we (1'b0), .dout (esx_q)
-            );
-            ram #(.ADDR_W(15)) u_divram (
-                .clk (clk), .addr (divram_a), .din (cpu_do),
-                .we (divram_we), .dout (divram_q)
             );
 
             // SD init demands <=400 kHz; after 1024 exchanges (well past any
@@ -301,6 +314,8 @@ module speccy #(
             wire spi_fast = spi_cnt[10];
 
             reg  eb_started;
+            reg  eb_r_started;
+            reg  [7:0] eb_rd_val;
             wire io_any_eb = (io_rd || io_wr_raw) && io_eb;
 
             always @(posedge clk) begin
@@ -308,12 +323,14 @@ module speccy #(
                     conmem  <= 1'b0;
                     mapram  <= 1'b0;
                     automap <= 1'b0;
-                    divbank <= 2'd0;
+                    divbank <= 3'd0;
                     sd_cs_r <= 1'b1;
                     spi_cnt <= 11'd0;
                     spi_start  <= 1'b0;
                     spi_tx     <= 8'hFF;
                     eb_started <= 1'b0;
+                    eb_r_started <= 1'b0;
+                    eb_rd_val  <= 8'hFF;
                 end else begin
                     spi_start <= 1'b0;
 
@@ -325,9 +342,14 @@ module speccy #(
                     if (io_wr && io_e3) begin
                         conmem  <= cpu_do[7];
                         mapram  <= mapram | cpu_do[6];   // sticky
-                        divbank <= cpu_do[1:0];
+                        divbank <= cpu_do[2:0];
                     end
-                    if (io_wr && io_e7)
+                    // CS must not change mid-exchange: at the slow init
+                    // clock a preamble byte is still shifting when esxDOS
+                    // reaches for CS, and a mid-byte select would desync the
+                    // card's framing by the orphaned edges. The WAIT stretch
+                    // below holds the OUT until the wire is quiet.
+                    if (io_wr_raw && io_e7 && !spi_busy)
                         sd_cs_r <= cpu_do[0];
 
                     // Start an exchange once per (possibly stretched) OUT.
@@ -337,9 +359,25 @@ module speccy #(
                         eb_started <= 1'b1;
                         if (!spi_fast) spi_cnt <= spi_cnt + 11'd1;
                     end
-                    if (!io_any_eb) eb_started <= 1'b0;
+                    // A READ returns the latched byte from the previous
+                    // exchange AND clocks a new 0xFF one -- the divMMC idiom
+                    // that lets one IN instruction stream one byte.
+                    if (io_rd && io_eb && !spi_busy && !eb_r_started) begin
+                        eb_rd_val    <= spi_rx;
+                        spi_tx       <= 8'hFF;
+                        spi_start    <= 1'b1;
+                        eb_r_started <= 1'b1;
+                        if (!spi_fast) spi_cnt <= spi_cnt + 11'd1;
+                    end
+                    if (!io_any_eb) begin
+                        eb_started   <= 1'b0;
+                        eb_r_started <= 1'b0;
+                    end
                 end
             end
+
+            assign eb_r_lat   = eb_r_started;
+            assign eb_rd_hold = eb_rd_val;
 
             spi_master u_spi (
                 .clk (clk), .rst (rst),
@@ -352,18 +390,18 @@ module speccy #(
             // Without a divMMC the trap/port plumbing has no consumers.
             /* verilator lint_off UNUSEDSIGNAL */
             wire _div_unused = &{sd_miso, spi_start, spi_tx, fetch_end,
-                                 entry_hit, exit_hit, divram_a, divram_we,
-                                 io_e3, io_e7};
+                                 entry_hit, exit_hit, io_e3, io_e7};
             /* verilator lint_on UNUSEDSIGNAL */
             assign esx_q    = 8'hFF;
-            assign divram_q = 8'hFF;
             assign spi_rx   = 8'hFF;
             assign spi_busy = 1'b0;
+            assign eb_r_lat   = 1'b0;
+            assign eb_rd_hold = 8'hFF;
             assign sd_sck   = 1'b0;
             assign sd_mosi  = 1'b1;
             always @(posedge clk) begin
                 conmem <= 1'b0; mapram <= 1'b0; automap <= 1'b0;
-                divbank <= 2'd0; sd_cs_r <= 1'b1;
+                divbank <= 3'd0; sd_cs_r <= 1'b1;
                 spi_start <= 1'b0; spi_tx <= 8'hFF;
             end
         end
@@ -371,9 +409,13 @@ module speccy #(
 
     assign sd_cs = sd_cs_r;
 
-    // Stretch any 0xEB access while an exchange is in flight: reads then
-    // return a completed byte, writes queue cleanly behind the previous one.
-    assign cpu_wait_n = !((io_rd || io_wr_raw) && io_eb && spi_busy);
+    // Stretch 0xEB accesses only until the PREVIOUS exchange completes: a
+    // read latches that byte and kicks off the next transfer in the
+    // background; a write queues behind the one in flight.
+    wire eb_rd_wait = io_rd && io_eb && spi_busy && !eb_r_lat;
+    wire eb_wr_wait = io_wr_raw && io_eb && spi_busy;
+    wire e7_wait    = io_wr_raw && io_e7 && spi_busy;
+    assign cpu_wait_n = !(eb_rd_wait || eb_wr_wait || e7_wait);
 
     // The RAMs register their outputs, so the bank select has to be delayed to
     // match or the mux picks the wrong one.
@@ -437,7 +479,7 @@ module speccy #(
     wire [7:0] kempston = {3'b000, joy_state[4], joy_state[0], joy_state[1], joy_state[2], joy_state[3]};
 
     assign cpu_di = mem_rd ? mem_data :
-                    io_rd  ? (io_eb        ? spi_rx   :
+                    io_rd  ? (io_eb        ? (eb_r_lat ? eb_rd_hold : spi_rx) :
                               ula_sel      ? ula_data :
                               kempston_sel ? kempston : 8'hFF)
                            : 8'hFF;

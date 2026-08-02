@@ -156,11 +156,14 @@ def main():
     r, mem, version = parse_z80(snap)
     write_hex(os.path.join(outdir, "snap_vram.hex"), mem[:16384])
     write_hex(os.path.join(outdir, "snap_ram.hex"),  mem[16384:])
+    # Combined 64K image: the divRAM doubles as the snapshot shadow.
+    write_hex(os.path.join(outdir, "snap_all.hex"),  mem + bytes(16384))
     write_hex(os.path.join(outdir, "snap_stub.hex"), build_stub(r))
 
     print(f"{snap}: v{version}, PC=0x{r['pc']:04X} SP=0x{r['sp']:04X} "
           f"IM{r['im']} {'EI' if r['iff1'] else 'DI'} border={r['border']}")
-    print(f"wrote snap_vram.hex, snap_ram.hex, snap_stub.hex to {outdir}/")
+    print(f"wrote snap_vram.hex, snap_ram.hex, snap_all.hex, snap_stub.hex "
+          f"to {outdir}/")
 
 
 if __name__ == "__main__":

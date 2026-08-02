@@ -19,6 +19,7 @@
 #include <cstdio>
 
 struct SdModel {
+    bool verbose = false;
     std::vector<uint8_t> disk;
     bool     idle = true;            // pre-ACMD41
     int      acmd41_polls = 0;
@@ -36,6 +37,9 @@ struct SdModel {
     size_t   out_pos = 0;
 
     std::vector<uint8_t> cmd;        // command bytes collected
+    // multi-block read (CMD18): stream blocks until CMD12
+    bool     multi_read = false;
+    uint32_t multi_lba = 0;
     // write path
     bool     expecting_data = false;
     std::vector<uint8_t> wr_buf;
@@ -44,11 +48,22 @@ struct SdModel {
     explicit SdModel(size_t blocks = 4096) : disk(blocks * 512, 0) {}
 
     void queue(uint8_t b) { out_q.push_back(b); }
+
+    void queue_block(uint32_t lba) {
+        queue(0xFF);                              // access gap
+        queue(0xFE);                              // data token
+        const uint64_t off = (uint64_t)lba * 512;
+        for (int i = 0; i < 512; i++)
+            queue(off + i < disk.size() ? disk[off + i] : 0xFF);
+        queue(0xAA); queue(0x55);                 // CRC16, unchecked
+    }
     void queue_r1(uint8_t r1) { queue(0xFF); queue(r1); }   // Ncr then R1
 
     void handle_cmd() {
         const uint8_t c = cmd[0] & 0x3F;
         const uint32_t arg = (uint32_t)cmd[1] << 24 | cmd[2] << 16 | cmd[3] << 8 | cmd[4];
+        if (verbose) fprintf(stderr, "SD: %sCMD%d arg=%08X\n",
+                             app_cmd ? "A" : "", c, arg);
         const bool was_app = app_cmd;
         app_cmd = false;
 
@@ -70,16 +85,41 @@ struct SdModel {
                 queue(0xC0); queue(0xFF); queue(0x80); queue(0x00);
                 break;
             case 16: queue_r1(0x00); break;
-            case 17: {                                // read block, SDHC LBA
+            case 9: {                                 // SEND_CSD (v2, SDHC)
                 queue_r1(0x00);
-                queue(0xFF);                          // access gap
-                queue(0xFE);                          // data token
-                const uint64_t off = (uint64_t)arg * 512;
-                for (int i = 0; i < 512; i++)
-                    queue(off + i < disk.size() ? disk[off + i] : 0xFF);
-                queue(0xAA); queue(0x55);             // CRC16, unchecked
+                queue(0xFF); queue(0xFE);
+                uint32_t csize = (uint32_t)(disk.size() / (512 * 1024)) - 1;
+                uint8_t csd[16] = {0x40,0x0E,0x00,0x32,0x5B,0x59,0x00,0x00,
+                                   (uint8_t)(csize >> 16), (uint8_t)(csize >> 8),
+                                   (uint8_t)csize, 0x7F,0x80,0x0A,0x40,0x01};
+                for (int i = 0; i < 16; i++) queue(csd[i]);
+                queue(0x00); queue(0x00);
                 break;
             }
+            case 10: {                                // SEND_CID
+                queue_r1(0x00);
+                queue(0xFF); queue(0xFE);
+                const char* cid = "\x03SPECCY-SIM-C1\x01";
+                for (int i = 0; i < 16; i++) queue((uint8_t)cid[i]);
+                queue(0x00); queue(0x00);
+                break;
+            }
+            case 12:                                  // STOP_TRANSMISSION
+                multi_read = false;
+                out_q.clear(); out_pos = 0;           // abandon the stream
+                queue(0xFF);                          // stuff byte
+                queue_r1(0x00);
+                break;
+            case 17:                                  // read single block
+                queue_r1(0x00);
+                queue_block(arg);
+                break;
+            case 18:                                  // read multiple blocks
+                queue_r1(0x00);
+                multi_read = true;
+                multi_lba = arg;
+                queue_block(multi_lba++);
+                break;
             case 24:                                  // write block
                 queue_r1(0x00);
                 expecting_data = true;
@@ -90,7 +130,10 @@ struct SdModel {
         }
     }
 
+    long dbg_count = 0;
     void byte_in(uint8_t b) {
+        if (verbose && dbg_count < 120)
+            fprintf(stderr, "%s%02X", (dbg_count++ % 24) ? " " : "\nRX: ", b);
         if (expecting_data) {
             if (wr_buf.empty() && b == 0xFF) return;  // pre-token filler
             wr_buf.push_back(b);
@@ -118,8 +161,10 @@ struct SdModel {
     }
 
     uint8_t next_out() {
+        if (out_pos >= out_q.size() && multi_read)
+            queue_block(multi_lba++);                 // CMD18 keeps streaming
         uint8_t b = (out_pos < out_q.size()) ? out_q[out_pos++] : 0xFF;
-        if (out_pos >= out_q.size()) { out_q.clear(); out_pos = 0; }
+        if (out_pos >= out_q.size() && !multi_read) { out_q.clear(); out_pos = 0; }
         return b;
     }
 

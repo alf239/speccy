@@ -20,6 +20,7 @@
 
 #include <verilated.h>
 #include "Vboot_tb_top.h"
+#include "sd_model.h"
 
 #include <cstdio>
 #include <cstring>
@@ -151,6 +152,9 @@ int main(int argc, char** argv) {
     int type_at = 120;
     bool snap = false, expect_snap = false;
     int  snap_at = -1;                 // re-arm + reset at this frame
+    std::string sd_path;
+    bool esx = false;
+    int  nmi_at = -1;
 
     for (int i = 1; i < argc; i++) {
         if      (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
@@ -161,6 +165,10 @@ int main(int argc, char** argv) {
         else if (!strcmp(argv[i], "--all"))                    all = true;
         else if (!strcmp(argv[i], "--snap"))                   snap = true;
         else if (!strcmp(argv[i], "--snap-at") && i + 1 < argc) snap_at = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--sd")     && i + 1 < argc) sd_path = argv[++i];
+        else if (!strcmp(argv[i], "--nmi-at") && i + 1 < argc) nmi_at = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--esx"))                    esx = true;
+        else if (!strcmp(argv[i], "--sdlog"))                  { /* set below */ }
         else if (!strcmp(argv[i], "--expect-snap"))            { snap = true; expect_snap = true; }
         else if (!strcmp(argv[i], "--expect-smoke"))           expect_smoke = true;
     }
@@ -172,6 +180,24 @@ int main(int argc, char** argv) {
     top.rst = 1; top.key_matrix = 0; top.joy_state = 0; top.ear_in = 1;
     top.ps2_clk = 1; top.ps2_data = 1;
     top.arm_snapshot = snap ? 1 : 0;
+    top.divmmc_en = esx ? 1 : 0;
+    top.nmi_button = 0;
+    top.sd_miso = 1;
+
+    SdModel* card = nullptr;
+    if (!sd_path.empty()) {
+        FILE* f = fopen(sd_path.c_str(), "rb");
+        if (!f) { fprintf(stderr, "cannot open %s\n", sd_path.c_str()); return 1; }
+        fseek(f, 0, SEEK_END);
+        long sz = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        card = new SdModel((size_t)(sz + 511) / 512);
+        if (fread(card->disk.data(), 1, sz, f) != (size_t)sz) { fprintf(stderr, "short read\n"); return 1; }
+        fclose(f);
+        printf("SD image: %s (%ld bytes)\n", sd_path.c_str(), sz);
+        for (int i = 1; i < argc; i++)
+            if (!strcmp(argv[i], "--sdlog")) card->verbose = true;
+    }
     for (int i = 0; i < 16; i++) { top.clk = 0; top.eval(); top.clk = 1; top.eval(); }
     top.rst = 0;
 
@@ -200,6 +226,7 @@ int main(int argc, char** argv) {
         }
         top.clk = 0; top.eval();
         top.clk = 1; top.eval();
+        if (card) top.sd_miso = card->step(top.sd_cs, top.sd_sck, top.sd_mosi) ? 1 : 0;
 
         if (!wav_path.empty() && ++wav_div == 320) {
             wav_div = 0;
@@ -224,6 +251,8 @@ int main(int argc, char** argv) {
                     write_bmp(path, fb.data(), W, H);
                 }
                 frame_no++;
+                if (nmi_at >= 0 && frame_no == nmi_at)     top.nmi_button = 1;
+                if (nmi_at >= 0 && frame_no == nmi_at + 2) top.nmi_button = 0;
                 if (frame_no == snap_at) {
                     // The bug this guards: block RAM init is configuration-
                     // time only, so an armed reset must REFILL RAM from the

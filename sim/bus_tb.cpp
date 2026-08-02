@@ -219,6 +219,12 @@ int main(int argc, char** argv) {
     check("divRAM bank0 distinct",    mem_read(0x2000), 0x11);
     io_write(0x00E3, 0x02);
     check("bank2 survives switch",    mem_read(0x2000), 0xA7);
+    io_write(0x00E3, 0x04);                       // the bank esxDOS demands
+    mem_write(0x2000, 0x44);
+    check("bank4 exists",             mem_read(0x2000), 0x44);
+    io_write(0x00E3, 0x00);
+    check("bank4 distinct from 0",    mem_read(0x2000), 0x11);
+    io_write(0x00E3, 0x02);
 
     // Exit trap (also delayed): RET at 0x1FF8 still executes from esx ROM.
     check("exit fetch sees esx",      m1_fetch(0x1FF8), esx_rom_byte(0x1FF8));
@@ -230,10 +236,16 @@ int main(int argc, char** argv) {
     io_write(0x00E3, 0x00);
     check("CONMEM clears",            mem_read(0x0001), test_rom_byte(1));
 
-    // 0x3Dxx (TR-DOS shim) also traps, delayed. Must run before MAPRAM,
-    // which permanently (stickily) replaces the esx ROM view.
-    m1_fetch(0x3D00);
-    check("0x3Dxx trap maps",         mem_read(0x0001), esx_rom_byte(1));
+    // 0x3Dxx traps INSTANTLY: the fetch itself must read the divRAM window
+    // (TR-DOS emulation / esxDOS trampoline). Seed a marker via CONMEM
+    // first, then fetch it back with everything unmapped. Must run before
+    // MAPRAM, which stickily replaces the esx ROM view.
+    io_write(0x00E3, 0x80);                       // CONMEM, bank 0
+    mem_write(0x3D42, 0xC9);                      // plant a marker
+    io_write(0x00E3, 0x00);                       // fully unmapped again
+    check("pre-3D: really unmapped",  mem_read(0x0001), test_rom_byte(1));
+    check("0x3Dxx fetch is instant",  m1_fetch(0x3D42), 0xC9);
+    check("0x3Dxx left map armed",    mem_read(0x0001), esx_rom_byte(1));
     m1_fetch(0x1FFF);                             // unmap
 
     // MAPRAM: bank 3 becomes the write-protected 'ROM'.

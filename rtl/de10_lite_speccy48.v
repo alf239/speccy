@@ -185,6 +185,7 @@ module de10_lite_speccy48 (
 
     speccy48 #(.ROM_FILE("rom48.hex"), .VRAM_FILE("snap_vram.hex"),
                .RAM_FILE("snap_ram.hex"), .STUB_FILE("snap_stub.hex"),
+               .SNAP_FILE("snap_all.hex"),
                .DIVMMC_ROM("esxdos.hex")) u_speccy (
         .clk          (clk14),
         .rst          (rst),

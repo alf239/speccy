@@ -114,3 +114,21 @@ native 3.3 V.
   Board builds now ALSO need quartus/esxdos.hex (bin2hex from esxDOS's
   ESXMMC.BIN -- gitignored like the ROMs). Next: step 4, esxDOS boot in
   simulation against the SD model + a FAT image.
+- 2026-08-02: step 4 done -- esxDOS 0.8.9 BOOTS IN SIMULATION: banner, card
+  detect (our CID string), FAT16 mount (our generated image), SYS modules
+  [OK], NMI file browser listing the card. Four bugs found by the boot, none
+  by the unit tests -- integration is undefeated:
+    1. esxDOS needs >=5 divRAM banks (it inits banks 4..0); divRAM is now
+       64K/8 banks, unified with the snapshot shadow (copier sources it; a
+       mixed esxDOS-then-snapshot sequence degrades to once-per-programming).
+    2. Reading port 0xEB must return the latched byte AND clock a new 0xFF
+       exchange -- the divMMC streaming idiom.
+    3. Trap classes differ: entry/exit points map AFTER their M1; 0x3D00-3DFF
+       maps INSTANTLY (TR-DOS window; esxDOS's ROM-call trampoline RETs at
+       0x3DFD and needs the fetch itself to read divRAM).
+    4. CS writes (0xE7) must WAIT for an in-flight exchange: at the slow init
+       clock, esxDOS reaches for CS while the preamble byte still shifts, and
+       a mid-byte select desyncs the card's framing by the orphaned edges.
+  tools/make_sd_image.py (MBR+FAT16 builder) and tools/make_test_tap.py
+  (copyright-free autostart TAP) support `make esx`. Suite: 142 checks.
+  Remaining: hardware wiring (6 pins) + recompile with esxdos.hex.

@@ -110,6 +110,8 @@ $(BOOT_EXE): $(BOOT_RTL) sim/boot_tb.cpp
 	  -GVRAM_FILE='"out/snap_vram.hex"' \
 	  -GRAM_FILE='"out/snap_ram.hex"' \
 	  -GSTUB_FILE='"out/snap_stub.hex"' \
+	  -GSNAP_FILE='"out/snap_all.hex"' \
+	  -GDIVMMC_ROM='"out/esxdos.hex"' \
 	  tv80.vlt $(BOOT_RTL) sim/boot_tb.cpp
 
 # Placeholder snapshot files so non-snapshot runs stay warning-free.
@@ -118,6 +120,8 @@ out/snap_stub.hex:
 	@python3 -c "print('00\n'*256, end='')"   > out/snap_stub.hex
 	@python3 -c "print('00\n'*16384, end='')" > out/snap_vram.hex
 	@python3 -c "print('00\n'*32768, end='')" > out/snap_ram.hex
+	@python3 -c "print('00\n'*8192, end='')"  > out/esxdos.hex
+	@python3 -c "print('00\n'*65536, end='')" > out/snap_all.hex
 
 boottest: $(BOOT_EXE) sim/cpu_rom.hex out/snap_stub.hex
 	@mkdir -p out
@@ -176,6 +180,20 @@ $(SD_EXE): rtl/spi_master.v sim/sd_model.h sim/sd_tb.cpp
 sdtest: $(SD_EXE)
 	./$(SD_EXE)
 
+# esxDOS boot in simulation:
+#   make esx ROM=48.rom ESX=path/to/ESXMMC.BIN SDDIR=path/to/esxdos-unzipped
+#            [FRAMES=n] [NMI=frame]
+esx: $(BOOT_EXE)
+	@test -n "$(ROM)" -a -n "$(ESX)" -a -n "$(SDDIR)" || { echo "usage: make esx ROM=48.rom ESX=ESXMMC.BIN SDDIR=esxdos-dir [FRAMES=n] [NMI=frame]"; exit 1; }
+	@mkdir -p out
+	python3 tools/bin2hex.py $(ROM) out/bootrom.hex
+	python3 tools/bin2hex.py $(ESX) out/esxdos.hex 8192
+	python3 tools/make_test_tap.py out/hello.tap
+	python3 tools/make_sd_image.py out/sd.img --tree $(SDDIR) --add out/hello.tap=GAMES/HELLO.TAP
+	./$(BOOT_EXE) --esx --sd out/sd.img --frames $(or $(FRAMES),250) \
+	  $(if $(NMI),--nmi-at $(NMI),) --out out/esx.bmp
+	@echo "wrote out/esx.bmp"
+
 # Everything that can be checked without hardware.
 test: run joytest bustest cputest boottest ps2test snaptest sdtest
 
@@ -185,4 +203,4 @@ lint:
 clean:
 	rm -rf $(MDIR) $(JOY_MDIR) $(BUS_MDIR) $(CPU_MDIR) $(BOOT_MDIR) $(PS2_MDIR) $(SD_MDIR) out sim/test_rom.hex sim/esx_rom.hex sim/cpu_rom.hex
 
-.PHONY: all run open lint clean joytest bustest cputest boottest boot ps2test snaptest snap sdtest test
+.PHONY: all run open lint clean joytest bustest cputest boottest boot ps2test snaptest snap sdtest esx test
