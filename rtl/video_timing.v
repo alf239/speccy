@@ -36,7 +36,7 @@ module video_timing #(
     parameter V_BLANK     = 16,
     parameter V_TOP       = 48,
 
-    parameter H_SYNC_OFF  = 0,   // hsync start, measured into the blank region
+    parameter H_SYNC_OFF  = 16,   // hsync start, measured into the blank region
     parameter H_SYNC_LEN  = 32,   // ~4.6 us at 7 MHz
     parameter V_SYNC_OFF  = 0,
     parameter V_SYNC_LEN  = 4
