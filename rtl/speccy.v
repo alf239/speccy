@@ -91,8 +91,9 @@ module speccy #(
     output wire        sd_mosi,
     input  wire        sd_miso,
 
-    // SD diagnostics for the board's displays: [7:0] last byte the CPU read
-    // from the card, [15:8] exchange counter (spins while SPI traffic flows)
+    // SD diagnostics for the board's displays: [7:0] last NON-FF byte the
+    // CPU read from the card (FF = the card has never answered), [15:8]
+    // exchange counter (spins while SPI traffic flows)
     output wire [15:0] dbg_sd,
 
     // ---- video ----------------------------------------------------------
@@ -347,6 +348,8 @@ module speccy #(
             reg  eb_r_started;
             reg  [7:0] eb_rd_val;
             reg  [7:0] dbg_xfers;
+            reg  [7:0] dbg_nff;    // last NON-FF byte from the card: FF here
+                                   // means the card has never answered at all
             wire io_any_eb = (io_rd || io_wr_raw) && io_eb;
 
             always @(posedge clk) begin
@@ -363,6 +366,7 @@ module speccy #(
                     eb_r_started <= 1'b0;
                     eb_rd_val  <= 8'hFF;
                     dbg_xfers  <= 8'd0;
+                    dbg_nff    <= 8'hFF;
                 end else begin
                     spi_start <= 1'b0;
                     if (spi_start) dbg_xfers <= dbg_xfers + 8'd1;
@@ -397,6 +401,7 @@ module speccy #(
                     // that lets one IN instruction stream one byte.
                     if (io_rd && io_eb && !spi_busy && !eb_r_started) begin
                         eb_rd_val    <= spi_rx;
+                        if (spi_rx != 8'hFF) dbg_nff <= spi_rx;
                         spi_tx       <= 8'hFF;
                         spi_start    <= 1'b1;
                         eb_r_started <= 1'b1;
@@ -411,7 +416,7 @@ module speccy #(
 
             assign eb_r_lat   = eb_r_started;
             assign eb_rd_hold = eb_rd_val;
-            assign dbg_sd     = {dbg_xfers, eb_rd_val};
+            assign dbg_sd     = {dbg_xfers, dbg_nff};
 
             spi_master u_spi (
                 .clk (clk), .rst (rst),

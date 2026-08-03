@@ -235,10 +235,11 @@ module de10_lite_speccy48 (
     assign LEDR[9]   = heartbeat[23];
 
     // divMMC mode repurposes HEX3:0 as SD diagnostics:
-    //   HEX1:0  last SPI byte the CPU read from the card
-    //           FF forever = card never answers (wiring/contact)
-    //           01         = card alive but stuck in idle (init loop)
-    //           00/data    = init passed, look further downstream
+    //   HEX1:0  last NON-FF SPI byte read from the card (sticky, so a lone
+    //           answer inside a flood of 0xFF retry hunts still shows)
+    //           FF = the card has NEVER answered (wiring/contact)
+    //           01 = card alive but stuck in idle (init loop)
+    //           00/data = init passed, look further downstream
     //   HEX3:2  SPI exchange counter -- spins while esxDOS is talking
     // HEX5:4 stay on the PS/2 diagnostics in both modes.
     assign HEX0 = seg7(divmode ? dbg_sd[3:0]   : kempston[3:0]);
