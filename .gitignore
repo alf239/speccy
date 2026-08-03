@@ -17,3 +17,5 @@ quartus/incremental_db/
 *.tzx
 *.sna
 quartus/esxdos.hex
+__pycache__/
+*.pyc
