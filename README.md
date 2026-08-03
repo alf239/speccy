@@ -11,9 +11,10 @@ can make one.
 
 **Phase 1 complete (2026-08-02): the 48K machine is done.** Keyboard (a
 stickered AT board through a DIN-5 socket), Kempston joystick, beeper,
-snapshot boot, and — in simulation, wiring pending — esxDOS loading from SD.
-Saboteur II is played on it daily by people born four decades after its
-release, which was the whole point.
+snapshot boot — and, since 2026-08-03, **esxDOS loading games from a microSD
+card**: pick a .TAP in the NMI file browser, play. Saboteur II is played on
+it daily by people born four decades after its release, which was the whole
+point.
 
 ![Phase 1: the complete machine](docs/img/phase1.jpg)
 
@@ -175,7 +176,9 @@ software) doing the filesystem work. Roughly 500 LE instead of a WD1793 emulatio
 - [x] **4** — beeper: piezo direct-drive + line-out divider
 - [x] **5 (sim)** — divMMC + esxDOS 0.8.9 boots in simulation: FAT16 mount,
   NMI browser, four protocol lessons in the stage-5 doc
-- [ ] **5 (hw)** — six wires to the SD breakout + recompile → games from card
+- [x] **5 (hw)** — **and on the real board** (2026-08-03): six wires to the SD
+  breakout, one flaky friction-fit contact found the traditional way (wiggle),
+  soldered down — games load from the card via the esxDOS NMI browser
 
 Phase 2, if it stays interesting: SDRAM, 128K paging, AY, and eventually the
 Scorpion's extended paging, 7 MHz turbo and that excellent ROM-resident debugger.

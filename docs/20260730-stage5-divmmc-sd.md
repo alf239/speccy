@@ -158,3 +158,13 @@ native 3.3 V.
   warm reset (the ROM's NMI-through-NMIADD=0 bug), and a SUCCESSFUL
   esxDOS boot also ends at (c) 1982 a few seconds after the module list
   -- that's the normal handover to BASIC, hooks armed.
+- 2026-08-03, later: **STAGE 5 COMPLETE ON HARDWARE.** The FF verdict was
+  correct -- the card never heard us. All six wires were in the right
+  holes with good-looking joints; the actual fault was the breakout's
+  friction-fit header resting unsoldered in the prototype board, found
+  by the classic wiggle-while-watching-HEX test. Soldered down, card
+  detected, FAT16 mounted, and the first game loaded from SD via the
+  NMI browser was Exolon. The per-game recompile ceremony is hereby
+  retired with honours (step 6). Lessons: a lit power LED only proves
+  *a* ground path, not a good one; a card working in a Mac reader only
+  proves SD mode, not SPI mode; and friction fit is not a connection.
