@@ -80,15 +80,53 @@ connector is ~25 mm tall. Original boards with the RF modulator were about
 that. Measure the case's internal clearance over the motherboard area
 before finalising which way up the daughterboard sits.
 
-## The other road: a from-scratch FPGA board
+## The other road: a from-scratch FPGA board (promoted after review)
 
-A custom board (FPGA + SDRAM + video DAC + config flash, ZX outline, no
-DE10-Lite) is the aesthetically pure endgame — and a different, much larger
-project: fine-pitch parts, power sequencing, a new bring-up debt, and it
-obsoletes the board we know works. It also pairs naturally with phase 2's
-SDRAM appetite (128K, Scorpion). Verdict: **phase 3.** The carrier gets us
-into the case this year; the custom board is what the carrier's success
-earns.
+Initially parked as phase 3 — then two facts moved it within reach:
+
+**1. The DE10-Lite's GPIO header is wired straight to MAX 10 pins.** No
+buffers, no shifters (hence the no-5V rule). Everything this project uses
+on that board is: the FPGA, a 50 MHz oscillator, a VGA resistor ladder,
+power regulation, and connectors. Our RTL is 100% portable within the
+MAX 10 family — a custom board changes *only the .qsf pin table*. Same
+M9K, same internal-flash instant-on configuration, same
+`SINGLE IMAGE WITH ERAM` memory-init trick. The FPGA-side risk of a
+custom board is a pin remap.
+
+**2. The right part exists in a friendly package: 10M50SAE144.** Same
+50K LE and — the binding constraint — the same 1,638 Kb of M9K as the
+DE10-Lite's chip, but:
+- **EQFP-144** (0.5 mm quad flat, exposed pad): routine for any PCBA
+  service, even hand-reworkable — no BGA anxieties
+- **Single supply** ("SA"): internal regulators, so the board needs one
+  3.3 V rail instead of the DE10-Lite's multi-rail arrangement
+- ~101 I/Os against our ~50-pin appetite
+- ~£40–60, stocked — the dominant cost of the whole board
+
+### What the custom board carries beyond the carrier's list
+
+| Block | Parts | Notes |
+| --- | --- | --- |
+| FPGA | 10M50SAE144C8G | C8 slowest grade is 5× faster than we need |
+| Power | 5 V in → 3.3 V buck + analog filtering | single rail thanks to SA |
+| Clock | 50 MHz 3.3 V oscillator | PLL settings unchanged |
+| Config | nothing! | MAX 10 internal flash, instant-on |
+| JTAG | 10-pin header | needs a standalone USB-Blaster dongle (~£10) — the one we use today lives on the DE10-Lite |
+| VGA | resistor DAC, 4:4:4 | copied from the DE10-Lite schematic |
+| SDRAM | W9825G6KH (32 MB, TSOP-54, ~£2) | **phase 2 lands on copper now** — 128K/Scorpion's memory, routed once |
+
+Board: 4-layer (signal/GND/power/signal), which makes SDRAM routing and
+decoupling boring instead of clever. Rev A cost, assembled, roughly
+£150–250 for a couple of boards — against the carrier's £20, buying
+sovereignty, SDRAM, and silence from the cobbler forever.
+
+### Bring-up ladder (each rung small)
+
+power rails → JTAG chain detected → LED blink → pin-remapped speccy.qsf →
+© 1982 → esxDOS. Steps 4–6 are known-good logic; the new debt is rungs 1–3.
+
+The DE10-Lite retires to the bench as the simulation-adjacent lab mule —
+every RTL change still proves itself there before touching the case.
 
 ## Open questions before schematic capture
 
@@ -112,8 +150,11 @@ earns.
 
 ## Verdict
 
-Feasible, cheap, and the right shape of project: one evening of RTL, two of
-KiCad, and the machine trades its cobbler hat for a chassis it historically
-belongs in. The keyboard — the part that looked like it needed a
-"controller" — is the most authentic interface of the whole build: thirteen
+Both roads reach the case. The carrier is the £20 weekend; the custom
+board is the real machine — PCB + PCBA, MAX 10 in EQFP-144 with the tiny
+parts soldered by the fab, SDRAM waiting for phase 2, and nothing on the
+board we didn't put there. Since the RTL ports with a pin table and the
+chip is stocked in a package a hobbyist can rework, the custom board is
+**no longer a different kind of project — just a bigger one**, and it's
+the one worth doing. The keyboard verdict stands either way: thirteen
 wires and a matrix, scanned the way Ferranti intended.
