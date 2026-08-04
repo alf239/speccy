@@ -39,7 +39,8 @@ ULA read the real membrane. The DIN-5 socket can stay as a secondary port.
 | DE10-Lite socket | 2×20 receptacle + standoffs | board hangs off its GPIO header, unmodified, reprogrammable in place |
 | Keyboard | 5-way + 8-way tail connectors | + optional pull-up pack; scanner in RTL |
 | Storage | push-push microSD socket | retires the breakout; SPI routed short, over ground |
-| Joystick | DE-9 male, side aperture | Kempston; space for a second (Sinclair port, phase 2) |
+| Joystick | DE-9 male, side aperture | Kempston (5 GPIOs, as today) |
+| Joystick 2 | DE-9 male, passive | Sinclair port 1: five switches tapping the keyboard matrix traces (6-7-8-9-0), the Interface 2 way — **zero GPIOs, zero logic** |
 | Audio | 3.5 mm jack + RC, optional small speaker + transistor | beeper as today; **EAR/MIC jacks land here too — phase-2 tape input becomes a connector, not a rework** |
 | Power | case DC jack position → 5 V | polyfuse + reverse-polarity diode, feeds the DE10-Lite's 5 V |
 | Keyboard legacy | DIN-5 socket (optional) | the stickered AT board keeps working |
@@ -96,7 +97,8 @@ earns.
 2. **Case internal clearance** over the board area (stack height).
 3. **Power entry**: reuse the case's DC aperture position, or feed through
    the rear panel next to VGA?
-4. Second joystick port now or pads-only?
+4. ~~Second joystick port~~ — **resolved**: it's passive matrix taps
+   (Interface 2 style), so fitting it costs traces, not pins. Fit it.
 
 ## Order of work
 
