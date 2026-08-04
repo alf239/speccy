@@ -126,6 +126,8 @@ docs/                 design notes (see below)
 The reasoning behind the target, the fit analysis, and what was rejected:
 
 - [Phase 1: 48K + divMMC](docs/20260727-phase1-48k-divmmc.md) — **the plan being built**
+- [ZX-48 carrier board](docs/20260803-zx-case-carrier-board.md) — moving the machine
+  into a real ZX case with a mechanical keyboard (evaluation)
 - [DE10-Lite bring-up](docs/20260727-de10-lite-bringup.md) — Quartus steps, PLL settings,
   joystick wiring, and what to check when it doesn't work
 - [Which machine to build](docs/20260727-clone-lineage-and-target-choice.md) — Soviet clone
