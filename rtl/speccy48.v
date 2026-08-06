@@ -30,7 +30,9 @@ module speccy48 #(
     input  wire [39:0] key_matrix,
     input  wire [4:0]  joy_state,
     input  wire        ear_in,
+    input  wire        ym_mode,     // AY/YM envelope-resolution switch
     output wire        speaker,
+    output wire [9:0]  audio,      // beeper + AY mix for a sigma-delta DAC
     output wire        mic,
     output wire [2:0]  border,
 
@@ -115,7 +117,9 @@ module speccy48 #(
         .key_matrix (key_matrix),
         .joy_state  (joy_state),
         .ear_in     (ear_in),
+        .ym_mode    (ym_mode),
         .speaker    (speaker),
+        .audio      (audio),
         .mic        (mic),
         .border     (border),
         .vga_r      (vga_r),

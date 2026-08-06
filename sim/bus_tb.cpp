@@ -196,6 +196,44 @@ int main(int argc, char** argv) {
     // An unclaimed port must float high, not answer.
     check("unused port 0x00FD", io_read(0x00FD), 0xFF);
 
+    // ---- AY on the 128K ports -------------------------------------------
+    printf("AY\n");
+    io_write(0xFFFD, 7);                      // select mixer
+    io_write(0xBFFD, 0x38);
+    check("R7 readback",        io_read(0xFFFD), 0x38);
+    io_write(0xFFFD, 1);                      // coarse period: 4-bit mask
+    io_write(0xBFFD, 0xFF);
+    check("R1 masked to 4 bits", io_read(0xFFFD), 0x0F);
+    io_write(0xFFFD, 14);                     // port A must exist + read back
+    io_write(0xBFFD, 0x5A);
+    check("R14 port A readback", io_read(0xFFFD), 0x5A);
+    // 0x00FD has A15=0: not the AY, must still float.
+    check("0x00FD still floats", io_read(0x00FD), 0xFF);
+
+    // The machine must actually make sound. First a static level: volume 15
+    // with the tone gate disabled must pin the audio bus at full scale --
+    // this checks the DAC/mix path with no clocking involved.
+    io_write(0xFFFD, 7);  io_write(0xBFFD, 0x3F);   // everything gated off
+    io_write(0xFFFD, 8);  io_write(0xBFFD, 15);     // full fixed volume
+    tick(16);
+    check("static full volume on bus", top->audio, 255);
+
+    // Then a real tone on channel A: the bus must move. R1 still holds 0x0F
+    // from the mask test above -- clear it, or the period is 3860 and the
+    // "silence" is the chip faithfully playing 34 Hz (been there).
+    io_write(0xFFFD, 7);  io_write(0xBFFD, 0x3E);   // tone A only
+    io_write(0xFFFD, 1);  io_write(0xBFFD, 0);      // coarse period clear!
+    io_write(0xFFFD, 0);  io_write(0xBFFD, 20);     // period 20
+    {
+        int changes = 0, last = top->audio;
+        for (int i = 0; i < 40000; i++) {
+            tick();
+            if (top->audio != last) { changes++; last = top->audio; }
+        }
+        check("AY tone reaches audio bus", changes > 10 ? 1 : 0, 1);
+    }
+    io_write(0xFFFD, 8);  io_write(0xBFFD, 0);      // silence it again
+
     // ---- divMMC ----------------------------------------------------------
     printf("divMMC\n");
     top->divmmc_en = 1;

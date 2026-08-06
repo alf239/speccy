@@ -27,6 +27,7 @@ module speccy_tb_top (
     input  wire [4:0]  joy_state,
     input  wire        ear_in,
     output wire        speaker,
+    output wire [9:0]  audio,
     output wire        mic,
     output wire [2:0]  border
 );
@@ -48,10 +49,12 @@ module speccy_tb_top (
         .mreq_n (mreq_n), .iorq_n (iorq_n), .rd_n (rd_n), .wr_n (wr_n),
         .m1_n (m1_n), .int_n (int_n),
         .key_matrix (key_matrix), .joy_state (joy_state), .ear_in (ear_in),
+        .ym_mode (1'b0), .audio (audio),
         .speaker (speaker), .mic (mic), .border (border),
         .vga_r (), .vga_g (), .vga_b (),
         .vga_hsync (), .vga_vsync (), .vga_blank ()
     );
+
 
     assign _unused_sck_o = _unused_sck;
 endmodule

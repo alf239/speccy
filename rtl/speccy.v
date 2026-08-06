@@ -81,8 +81,12 @@ module speccy #(
     input  wire [39:0] key_matrix,   // active high, 8 half-rows of 5
     input  wire [4:0]  joy_state,    // active high {fire,right,left,down,up}
     input  wire        ear_in,       // tape input
+    input  wire        ym_mode,      // AY/YM envelope-resolution switch
     output reg         speaker,
     output reg         mic,
+    // Beeper + AY, mixed and saturated: feed a sigma-delta DAC on the board,
+    // or record directly in simulation. Beeper full-on contributes 512.
+    output wire [9:0]  audio,
     output wire [2:0]  border,
 
     // ---- SD card (SPI) --------------------------------------------------
@@ -507,6 +511,36 @@ module speccy #(
         end
     end
 
+    // -----------------------------------------------------------------------
+    // AY-3-8912 on the 128K ports -- present even on this 48K machine, the
+    // way a Melodik interface bolted one onto a real 48K. Decode is the
+    // classic partial one: A15 and ~A1 select the chip, A14 picks address
+    // (0xFFFD, also the read port) vs data (0xBFFD). A0=1 keeps the ULA out
+    // of it; Kempston needs A5=0 and 0x??FD has A5=1, so nobody collides.
+    // Clock: 1.75 MHz, half the CPU clock, Pentagon convention.
+    // -----------------------------------------------------------------------
+    wire ay_sel = cpu_a[15] && !cpu_a[1];
+    wire ay_addr_wr = io_wr && ay_sel && cpu_a[14];
+    wire ay_data_wr = io_wr && ay_sel && !cpu_a[14];
+    wire ay_rd_sel  = ay_sel && cpu_a[14];
+
+    reg ay_ce_half;
+    always @(posedge clk) if (ce_cpu) ay_ce_half <= ~ay_ce_half;
+    wire ay_ce = ce_cpu && ay_ce_half;
+
+    wire [7:0] ay_dout;
+    wire [9:0] ay_audio;
+
+    ay8912 u_ay (
+        .clk (clk), .rst (rst), .ce (ay_ce), .ym_mode (ym_mode),
+        .addr_wr (ay_addr_wr), .data_wr (ay_data_wr),
+        .din (cpu_do), .dout (ay_dout),
+        .audio (ay_audio)
+    );
+
+    wire [10:0] audio_sum = {1'b0, ay_audio} + (speaker ? 11'd512 : 11'd0);
+    assign audio = audio_sum[10] ? 10'd1023 : audio_sum[9:0];
+
     wire [4:0] kb_rows;
     keyboard u_keyboard (
         .row_sel_n  (cpu_a[15:8]),
@@ -523,6 +557,7 @@ module speccy #(
     assign cpu_di = mem_rd ? mem_data :
                     io_rd  ? (io_eb        ? (eb_r_lat ? eb_rd_hold : spi_rx) :
                               ula_sel      ? ula_data :
+                              ay_rd_sel    ? ay_dout :
                               kempston_sel ? kempston : 8'hFF)
                            : 8'hFF;
 

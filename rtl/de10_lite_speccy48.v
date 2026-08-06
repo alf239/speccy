@@ -5,6 +5,7 @@
 // ROM that means BASIC to the (c) 1982 message with nothing plugged in.
 //
 //   SW[9]      sync polarity (flip if the monitor won't lock)
+//   SW[8]      AY envelope resolution: down = AY (16 steps), up = YM (32)
 //   SW[1]      snapshot mode: ON + reset = boot straight into the snapshot
 //              baked in via snap_{stub,vram,ram}.hex (tools/snap2hex.py);
 //              OFF + reset = normal BASIC boot
@@ -88,6 +89,14 @@ module de10_lite_speccy48 (
     // Joystick on GPIO[4:0]; beeper on GPIO[35]; everything else undriven
     // -----------------------------------------------------------------------
     wire speaker;
+    wire [9:0] audio;
+
+    // First-order sigma-delta DAC at 14 MHz: the pin's average tracks the
+    // 10-bit beeper+AY mix, and the existing RC into the 3.5 mm jack (plus
+    // the piezo's own mechanics) filters away the carrier.
+    reg [10:0] sd_acc;
+    always @(posedge clk14) sd_acc <= {1'b0, sd_acc[9:0]} + {1'b0, audio};
+    wire audio_out = sd_acc[10];
 
     wire sd_cs, sd_sck, sd_mosi;
 
@@ -103,7 +112,7 @@ module de10_lite_speccy48 (
     assign GPIO[20]    = sd_sck;                      // pin 23
     assign GPIO[31:21] = 11'bz;
     assign GPIO[35:33] = 3'bz;
-    assign GPIO[32]    = speaker;
+    assign GPIO[32]    = audio_out;
 
     wire [4:0] joy_state;
     wire [7:0] kempston;
@@ -204,7 +213,9 @@ module de10_lite_speccy48 (
         .key_matrix (ps2_matrix | autokey),
         .joy_state  (joy_state),
         .ear_in     (1'b1),
+        .ym_mode    (SW[8]),               // up = YM 32-step envelopes
         .speaker    (speaker),
+        .audio      (audio),
         .mic        (mic),
         .border     (border),
         .vga_r      (r),

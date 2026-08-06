@@ -182,8 +182,14 @@ software) doing the filesystem work. Roughly 500 LE instead of a WD1793 emulatio
   breakout, one flaky friction-fit contact found the traditional way (wiggle),
   soldered down — games load from the card via the esxDOS NMI browser
 
-Phase 2, if it stays interesting: SDRAM, 128K paging, AY, and eventually the
-Scorpion's extended paging, 7 MHz turbo and that excellent ROM-resident debugger.
+Phase 2 — the Scorpion story — has begun:
+
+- [x] **AY-3-8912** (sim, 2026-08-06): from-scratch PSG on the 128K ports,
+  AY/YM envelope resolution on SW[8], beeper+AY mixed through a sigma-delta
+  DAC on the existing pin — `.playpt3` turns the machine into a jukebox
+- [ ] SDRAM controller against the DE10-Lite's own 64 MB chip
+- [ ] 128K: #7FFD paging, twin ROMs, Pentagon-128 timing
+- [ ] Scorpion: #1FFD, 256K, turbo, service ROM
 
 ## Hardware
 

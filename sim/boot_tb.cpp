@@ -232,7 +232,8 @@ int main(int argc, char** argv) {
 
         if (!wav_path.empty() && ++wav_div == 320) {
             wav_div = 0;
-            audio.push_back(top.speaker ? 220 : 36);
+            // 10-bit beeper+AY mix from the machine, recorded as 8-bit PCM.
+            audio.push_back((uint8_t)(top.audio >> 2));
         }
 
         const bool hs = top.vga_hsync, vs = top.vga_vsync;

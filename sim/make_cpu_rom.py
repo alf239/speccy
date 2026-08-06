@@ -35,13 +35,39 @@ program = bytes([
     0x32, 0x00, 0x80,       # ld (0x8000), a     ; upper RAM marker
     0xAF,                   # xor a
     0x32, 0x00, 0x90,       # ld (0x9000), a     ; interrupt counter = 0
-    0xFB,                   # ei
-    # 0x001E  main loop
-    0x76,                   # halt
-    0x18, 0xFD,             # jr 0x001E
+    0xC3, 0x80, 0x00,       # jp 0x0080          ; continue past the ISR
 ])
 rom[0:len(program)] = program
 assert len(program) <= 0x38, "program overlaps the IM 1 vector"
+
+# 0x0080: program the AY -- tone A only, period 50 (2187.5 Hz), volume 15 --
+# then the EI + HALT loop. A real CPU driving OUT (C),A at the 128K ports is
+# the piece neither the AY unit test nor the bus testbench covers.
+ay_setup = bytes([
+    0x01, 0xFD, 0xFF,       # ld bc, 0xFFFD
+    0x3E, 0x07,             # ld a, 7
+    0xED, 0x79,             # out (c), a         ; select R7
+    0x06, 0xBF,             # ld b, 0xBF
+    0x3E, 0x3E,             # ld a, 0x3E
+    0xED, 0x79,             # out (c), a         ; mixer: tone A only
+    0x06, 0xFF,             # ld b, 0xFF
+    0x3E, 0x00,             # ld a, 0
+    0xED, 0x79,             # out (c), a         ; select R0
+    0x06, 0xBF,             # ld b, 0xBF
+    0x3E, 0x32,             # ld a, 50
+    0xED, 0x79,             # out (c), a         ; period 50
+    0x06, 0xFF,             # ld b, 0xFF
+    0x3E, 0x08,             # ld a, 8
+    0xED, 0x79,             # out (c), a         ; select R8
+    0x06, 0xBF,             # ld b, 0xBF
+    0x3E, 0x0F,             # ld a, 15
+    0xED, 0x79,             # out (c), a         ; full volume
+    0xFB,                   # ei
+    # halt loop
+    0x76,                   # halt
+    0x18, 0xFD,             # jr halt
+])
+rom[0x80:0x80 + len(ay_setup)] = ay_setup
 
 isr = bytes([
     # 0x0038  IM 1 handler

@@ -28,6 +28,7 @@ module boot_tb_top #(
     input  wire [4:0]  joy_state,
     input  wire        ear_in,
     output wire        speaker,
+    output wire [9:0]  audio,
     output wire        mic,
     output wire [2:0]  border,
 
@@ -69,7 +70,9 @@ module boot_tb_top #(
         .key_matrix (key_matrix | ps2_matrix),
         .joy_state  (joy_state),
         .ear_in     (ear_in),
+        .ym_mode    (1'b0),
         .speaker    (speaker),
+        .audio      (audio),
         .mic        (mic),
         .border     (border),
         .vga_r      (vga_r),

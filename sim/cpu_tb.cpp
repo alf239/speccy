@@ -37,8 +37,9 @@ int main(int argc, char** argv) {
     top->rst = 0;
 
     const int FRAMES = 6;
-    long ints_seen = 0;
+    long ints_seen = 0, audio_changes = 0;
     bool prev_int = top->int_n_obs;
+    int  prev_audio = top->audio;
 
     for (long i = 0; i < FRAMES * FRAME_CLKS; i++) {
         top->clk = 0; top->eval();
@@ -46,6 +47,8 @@ int main(int argc, char** argv) {
         const bool now = top->int_n_obs;
         if (prev_int && !now) ints_seen++;
         prev_int = now;
+        if (top->audio != prev_audio) audio_changes++;
+        prev_audio = top->audio;
     }
 
     printf("ran %d frames, saw %ld interrupts\n", FRAMES, ints_seen);
@@ -55,6 +58,11 @@ int main(int argc, char** argv) {
     check("attr byte at 0x5800",   top->dbg_attr,   0x55);
     check("upper RAM at 0x8000",   top->dbg_ramhi,  0x5A);
     check("speaker still low",     top->speaker,    0x00);
+
+    // The ROM programs the AY over OUT (C),A: tone A, period 50, volume 15.
+    // 2187.5 Hz over ~0.12 s of run = several hundred audio transitions.
+    printf("audio bus changed %ld times\n", audio_changes);
+    check("CPU-driven AY tone plays", audio_changes > 100 ? 1 : 0, 1);
 
     // The counter must track the INT pulses. EI happens within the first few
     // hundred T-states and the first INT is ~248 lines in, so every pulse

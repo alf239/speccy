@@ -48,7 +48,7 @@ joytest: $(JOY_EXE)
 BUS_MDIR := obj_dir_bus
 BUS_EXE  := $(BUS_MDIR)/bus_tb
 BUS_RTL  := rtl/video_timing.v rtl/vram.v rtl/ram.v rtl/video.v rtl/palette.v \
-            rtl/scandoubler.v rtl/keyboard.v rtl/spi_master.v rtl/speccy.v \
+            rtl/scandoubler.v rtl/keyboard.v rtl/spi_master.v rtl/ay8912.v rtl/speccy.v \
             sim/speccy_tb_top.v
 
 # Known ROM contents for the bus tests; must match test_rom_byte() in bus_tb.cpp
@@ -74,7 +74,7 @@ CPU_EXE  := $(CPU_MDIR)/cpu_tb
 TV80_RTL := rtl/tv80/tv80s.v rtl/tv80/tv80_core.v rtl/tv80/tv80_alu.v \
             rtl/tv80/tv80_mcode.v rtl/tv80/tv80_reg.v
 CPU_RTL  := rtl/video_timing.v rtl/vram.v rtl/ram.v rtl/video.v rtl/palette.v \
-            rtl/scandoubler.v rtl/keyboard.v rtl/spi_master.v rtl/speccy.v \
+            rtl/scandoubler.v rtl/keyboard.v rtl/spi_master.v rtl/ay8912.v rtl/speccy.v \
             rtl/speccy48.v $(TV80_RTL) sim/speccy48_tb_top.v
 
 sim/cpu_rom.hex: sim/make_cpu_rom.py
@@ -96,7 +96,7 @@ BOOT_MDIR := obj_dir_boot
 BOOT_EXE  := $(BOOT_MDIR)/boot_tb
 BOOT_RTL  := rtl/video_timing.v rtl/vram.v rtl/ram.v rtl/video.v rtl/palette.v \
              rtl/ps2_rx.v rtl/ps2_keyboard.v rtl/spi_master.v \
-             rtl/scandoubler.v rtl/keyboard.v rtl/speccy.v rtl/speccy48.v \
+             rtl/scandoubler.v rtl/keyboard.v rtl/ay8912.v rtl/speccy.v rtl/speccy48.v \
              $(TV80_RTL) sim/boot_tb_top.v
 # The ROM path is baked in as out/bootrom.hex; the file is re-generated per
 # run ($readmemh reads at runtime, so no rebuild when the ROM changes).
@@ -180,6 +180,19 @@ $(SD_EXE): rtl/spi_master.v sim/sd_model.h sim/sd_tb.cpp
 sdtest: $(SD_EXE)
 	./$(SD_EXE)
 
+# AY-3-8912 unit tests.
+AY_MDIR := obj_dir_ay
+AY_EXE  := $(AY_MDIR)/ay_tb
+
+$(AY_EXE): rtl/ay8912.v sim/ay_tb.cpp
+	$(VERILATOR) --cc --exe --build -j 0 --top-module ay8912 \
+	  --Mdir $(AY_MDIR) -o ay_tb \
+	  -Wall -Wno-DECLFILENAME \
+	  rtl/ay8912.v sim/ay_tb.cpp
+
+aytest: $(AY_EXE)
+	./$(AY_EXE)
+
 # esxDOS boot in simulation:
 #   make esx ROM=48.rom ESX=path/to/ESXMMC.BIN SDDIR=path/to/esxdos-unzipped
 #            [FRAMES=n] [NMI=frame] [RESET=frame]
@@ -199,7 +212,7 @@ esx: $(BOOT_EXE)
 	@echo "wrote out/esx.bmp"
 
 # Everything that can be checked without hardware.
-test: run joytest bustest cputest boottest ps2test snaptest sdtest
+test: run joytest bustest cputest boottest ps2test snaptest sdtest aytest
 
 lint:
 	$(VERILATOR) --lint-only --top-module $(TOP) -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY $(RTL)
