@@ -10,17 +10,32 @@ module boot_tb_top #(
     parameter RAM_FILE   = "",
     parameter STUB_FILE  = "",
     parameter SNAP_FILE  = "",
-    parameter DIVMMC_ROM = ""
+    parameter DIVMMC_ROM = "",
+    parameter ROM128_FILE = ""
 )(
     input  wire        clk,
     input  wire        rst,
     input  wire        arm_snapshot,
     input  wire        divmmc_en,
+    input  wire        en_128,
     input  wire        nmi_button,
     output wire        sd_cs,
     output wire        sd_sck,
     output wire        sd_mosi,
     input  wire        sd_miso,
+
+    output wire [12:0] dram_addr,
+    output wire [1:0]  dram_ba,
+    input  wire [15:0] dram_dq_in,
+    output wire [15:0] dram_dq_out,
+    output wire        dram_dq_oe,
+    output wire        dram_ldqm,
+    output wire        dram_udqm,
+    output wire        dram_ras_n,
+    output wire        dram_cas_n,
+    output wire        dram_we_n,
+    output wire        dram_cs_n,
+    output wire        dram_cke,
 
     input  wire [39:0] key_matrix,   // OR-ed with the PS/2-derived matrix
     input  wire        ps2_clk,
@@ -59,13 +74,22 @@ module boot_tb_top #(
 
     speccy48 #(.ROM_FILE(ROM_FILE), .VRAM_FILE(VRAM_FILE),
                .RAM_FILE(RAM_FILE), .STUB_FILE(STUB_FILE),
-               .SNAP_FILE(SNAP_FILE), .DIVMMC_ROM(DIVMMC_ROM)) u_ss (
+               .SNAP_FILE(SNAP_FILE), .DIVMMC_ROM(DIVMMC_ROM),
+               .ROM128_FILE(ROM128_FILE)) u_ss (
         .clk          (clk),
         .rst          (rst),
         .divmmc_en    (divmmc_en),
+        .en_128       (en_128),
         .nmi_button   (nmi_button),
         .sd_cs (sd_cs), .sd_sck (sd_sck), .sd_mosi (sd_mosi),
         .sd_miso (sd_miso), .dbg_sd (),
+        .dram_addr (dram_addr), .dram_ba (dram_ba),
+        .dram_dq_in (dram_dq_in), .dram_dq_out (dram_dq_out),
+        .dram_dq_oe (dram_dq_oe),
+        .dram_ldqm (dram_ldqm), .dram_udqm (dram_udqm),
+        .dram_ras_n (dram_ras_n), .dram_cas_n (dram_cas_n),
+        .dram_we_n (dram_we_n), .dram_cs_n (dram_cs_n),
+        .dram_cke (dram_cke),
         .arm_snapshot (arm_snapshot),
         .key_matrix (key_matrix | ps2_matrix),
         .joy_state  (joy_state),

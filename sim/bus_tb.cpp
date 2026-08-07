@@ -9,12 +9,14 @@
 
 #include <verilated.h>
 #include "Vspeccy_tb_top.h"
+#include "sdram_model.h"
 
 #include <cstdio>
 #include <cstdint>
 #include <cstring>
 
 static Vspeccy_tb_top* top;
+static SdramModel* sdram;
 static int failures = 0;
 
 static void check(const char* what, uint32_t got, uint32_t want) {
@@ -30,6 +32,12 @@ static void tick(int n = 1) {
     for (int i = 0; i < n; i++) {
         top->clk = 0; top->eval();
         top->clk = 1; top->eval();
+        uint16_t dq = 0xFFFF;
+        sdram->step(top->dram_cs_n, top->dram_ras_n, top->dram_cas_n,
+                    top->dram_we_n, top->dram_addr, top->dram_ba,
+                    top->dram_ldqm, top->dram_udqm,
+                    top->dram_dq_out, top->dram_dq_oe, dq);
+        top->dram_dq_in = dq;
     }
 }
 
@@ -44,6 +52,9 @@ static void idle() {
 static uint8_t mem_read(uint16_t a) {
     top->cpu_a = a; top->mreq_n = 0; top->rd_n = 0;
     tick(4);
+    int guard = 1000;
+    while (!top->cpu_wait_n && guard--) tick();   // SDRAM reads stretch
+    tick(1);
     uint8_t d = top->cpu_di;
     idle();
     return d;
@@ -52,6 +63,8 @@ static uint8_t mem_read(uint16_t a) {
 static void mem_write(uint16_t a, uint8_t d) {
     top->cpu_a = a; top->cpu_do = d; top->mreq_n = 0; top->wr_n = 0;
     tick(4);
+    int guard = 1000;
+    while (!top->cpu_wait_n && guard--) tick();   // SDRAM backpressure
     idle();
 }
 
@@ -78,6 +91,7 @@ static void io_write(uint16_t a, uint8_t d) {
 // Must match the generators in the Makefile.
 static uint8_t test_rom_byte(int i) { return (uint8_t)((i * 7 + 3) & 0xFF); }
 static uint8_t esx_rom_byte(int i)  { return (uint8_t)((i * 11 + 5) & 0xFF); }
+static uint8_t rom128_byte(int i)   { return (uint8_t)((i * 13 + 7) & 0xFF); }
 
 // An M1 opcode fetch: the automapper's trigger. Returns the fetched byte
 // (which, per divMMC semantics, comes from the memory mapped BEFORE the
@@ -97,9 +111,11 @@ int main(int argc, char** argv) {
     VerilatedContext ctx;
     ctx.commandArgs(argc, argv);
     top = new Vspeccy_tb_top(&ctx);
+    sdram = new SdramModel();
 
     top->rst = 1; top->key_matrix = 0; top->joy_state = 0; top->ear_in = 1;
-    top->cpu_a = 0; top->cpu_do = 0; top->divmmc_en = 0;
+    top->cpu_a = 0; top->cpu_do = 0; top->divmmc_en = 0; top->en_128 = 0;
+    top->dram_dq_in = 0xFFFF;
     idle();
     tick(16);
     top->rst = 0;
@@ -362,6 +378,63 @@ int main(int argc, char** argv) {
     tick(4);
     check("IORQ+M1 not ULA read", top->cpu_di, 0xFF);
     idle();
+
+    // ---- 128K: #7FFD paging, twin ROMs, screens in M9K, banks in SDRAM ---
+    printf("128K\n");
+    top->divmmc_en = 0;
+    top->en_128 = 1;
+    top->rst = 1; idle(); tick(16); top->rst = 0;
+    for (int i = 0; i < 30000; i++) tick();       // SDRAM init (~2 ms)
+
+    // ROM select: reset state is ROM0, the 128 editor.
+    check("ROM0 (128 editor) mapped",  mem_read(0x0001), rom128_byte(1));
+    io_write(0x7FFD, 0x10);
+    check("bit4 pages in ROM1 (48)",   mem_read(0x0001), test_rom_byte(1));
+    io_write(0x7FFD, 0x00);
+    check("and back to ROM0",          mem_read(0x0001), rom128_byte(1));
+
+    // Eight banks at 0xC000, all distinct (5/7 in M9K, the rest in SDRAM).
+    for (int b = 0; b < 8; b++) {
+        io_write(0x7FFD, (uint8_t)b);
+        mem_write((uint16_t)(0xC000 + b), (uint8_t)(0xB0 + b));
+    }
+    {
+        int wrong = 0;
+        for (int b = 0; b < 8; b++) {
+            io_write(0x7FFD, (uint8_t)b);
+            if (mem_read((uint16_t)(0xC000 + b)) != (uint8_t)(0xB0 + b)) wrong++;
+        }
+        check("8 banks hold distinct data", wrong, 0);
+    }
+
+    // Bank 5 at 0xC000 is the same memory as the screen at 0x4000.
+    io_write(0x7FFD, 5);
+    mem_write(0xC123, 0x77);
+    check("bank5 C123 == 4123",        mem_read(0x4123), 0x77);
+    mem_write(0x4321, 0x66);
+    check("4321 == bank5 C321",        mem_read(0xC321), 0x66);
+
+    // 0x8000 is always bank 2.
+    io_write(0x7FFD, 2);
+    mem_write(0x8055, 0x22);
+    check("bank2 8055 == C055",        mem_read(0xC055), 0x22);
+
+    // Lock bit: further writes ignored until reset.
+    io_write(0x7FFD, 0x20 | 3);
+    mem_write(0xC077, 0x33);
+    io_write(0x7FFD, 0x00);                        // must bounce off the lock
+    check("lock holds bank 3",         mem_read(0xC077), 0x33);
+    check("lock holds ROM0",           mem_read(0x0001), rom128_byte(1));
+
+    check("no SDRAM protocol errors",  sdram->errors, 0);
+
+    // 48K regression: a reset without en_128 is the classic machine.
+    top->en_128 = 0;
+    top->rst = 1; idle(); tick(16); top->rst = 0; tick(32);
+    io_write(0x7FFD, 5);                           // must be inert
+    mem_write(0xC200, 0x55);                       // lands in ramhi
+    check("48K: 7FFD inert, ramhi lives", mem_read(0xC200), 0x55);
+    check("48K: the 48 ROM",           mem_read(0x0001), test_rom_byte(1));
 
     top->final();
     delete top;

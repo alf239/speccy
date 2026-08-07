@@ -34,6 +34,7 @@ module speccy #(
     parameter STUB_FILE  = "",     // 256-byte snapshot boot overlay
     parameter SNAP_FILE  = "",     // 64K combined snapshot image for divRAM
     parameter DIVMMC_ROM = "",     // 8K esxDOS image; empty = no divMMC
+    parameter ROM128_FILE = "",    // 16K 128 editor ROM; empty = 48K-only
     // Interrupt: 32 T-states long on a 48K, asserted once per frame. The line
     // it starts on decides where "raster line 0" sits for timing-sensitive
     // code; the start of vertical blanking is a reasonable default and this is
@@ -52,6 +53,11 @@ module speccy #(
     // divMMC runtime enable (board switch). With this low -- or with no
     // DIVMMC_ROM built in -- the machine is exactly the plain 48K.
     input  wire        divmmc_en,
+
+    // 128K mode request, sampled at reset. Honoured only when a 128 ROM is
+    // built in and no snapshot is armed (snapshots are a 48K affair). With
+    // it low the machine is bit-exact the 48K it always was.
+    input  wire        en_128,
 
     // High while the boot copier is refilling RAM from the snapshot shadow.
     // The CPU must be held in reset while this is set -- block RAM init only
@@ -95,6 +101,20 @@ module speccy #(
     output wire        sd_mosi,
     input  wire        sd_miso,
 
+    // ---- SDRAM (128K banks 0-4 and 6 live here) -------------------------
+    output wire [12:0] dram_addr,
+    output wire [1:0]  dram_ba,
+    input  wire [15:0] dram_dq_in,
+    output wire [15:0] dram_dq_out,
+    output wire        dram_dq_oe,
+    output wire        dram_ldqm,
+    output wire        dram_udqm,
+    output wire        dram_ras_n,
+    output wire        dram_cas_n,
+    output wire        dram_we_n,
+    output wire        dram_cs_n,
+    output wire        dram_cke,
+
     // SD diagnostics for the board's displays: [7:0] last NON-FF byte the
     // CPU read from the card (FF = the card has never answered), [15:8]
     // exchange counter (spins while SPI traffic flows)
@@ -120,17 +140,57 @@ module speccy #(
 
     // -----------------------------------------------------------------------
     // Memory
+    //
+    // 48K mode: the classic map -- ROM, vram, 32K of M9K.
+    // 128K mode (en_128 at reset, ROM128_FILE built in): #7FFD paging.
+    // Screen banks 5 and 7 live in dual-port M9K so video never touches
+    // SDRAM; banks 0-4 and 6 live in the SDRAM, whose 7-cycle access hides
+    // inside the Z80 memory cycle (WAIT covers the alignments it doesn't).
     // -----------------------------------------------------------------------
+    localparam HAS_128K = (ROM128_FILE != "");
+
     wire mem_rd = !mreq_n && !rd_n;
     wire mem_wr = !mreq_n && !wr_n;
 
-    wire [7:0] rom_q, vram_q, ramhi_q;
+    reg mode128;
+    always @(posedge clk)
+        if (rst) mode128 <= HAS_128K && en_128 && !arm_snapshot;
+
+    // #7FFD: bits 2:0 bank at 0xC000, 3 screen, 4 ROM (0 = 128 editor),
+    // 5 lock (48K compatibility: latched until reset). Pentagon partial
+    // decode: A15=0, A1=0, write only.
+    reg [5:0] p7ffd;
+    wire [2:0] c_bank  = p7ffd[2:0];
+    wire       scr_sel = p7ffd[3];
+    wire       rom_sel = p7ffd[4];
+
+    // window decode
+    wire win4 = (cpu_a[15:14] == 2'b01);
+    wire win8 = (cpu_a[15:14] == 2'b10);
+    wire winC = (cpu_a[15:14] == 2'b11);
+    wire winC_v5 = mode128 && winC && (c_bank == 3'd5);
+    wire winC_v7 = mode128 && winC && (c_bank == 3'd7);
+    wire sdram_sel = mode128 && (win8 || (winC && c_bank != 3'd5
+                                               && c_bank != 3'd7));
+
+    wire [7:0] rom_q, rom128_q, vram_q, vram7_q, ramhi_q;
     wire [13:0] video_addr;
     wire [7:0]  video_data;
 
     ram #(.ADDR_W(14), .INIT_FILE(ROM_FILE)) u_rom (
         .clk (clk), .addr (cpu_a[13:0]), .din (8'd0), .we (1'b0), .dout (rom_q)
     );
+
+    generate
+        if (HAS_128K) begin : g_rom128
+            ram #(.ADDR_W(14), .INIT_FILE(ROM128_FILE)) u_rom128 (
+                .clk (clk), .addr (cpu_a[13:0]), .din (8'd0),
+                .we (1'b0), .dout (rom128_q)
+            );
+        end else begin : g_no_rom128
+            assign rom128_q = 8'hFF;
+        end
+    endgenerate
 
     // Boot copier signals (driven by the snapshot logic below; idle when the
     // machine has no snapshot support). Source data comes from the divRAM,
@@ -148,30 +208,125 @@ module speccy #(
 
     assign boot_busy = copying || wiping;
 
-    // The 0x4000 bank needs two ports: CPU on one, video on the other. The
+    // The screen banks need two ports: CPU on one, video on the other. The
     // boot copier borrows the CPU port while the CPU is held in reset.
+    // Bank 5 is the 0x4000 window always, and the 0xC000 window when paged
+    // there; bank 7 (128K shadow screen) is reachable only via 0xC000.
+    wire [7:0] vram5_video, vram7_video;
+
     vram #(.ADDR_W(14), .INIT_FILE(VRAM_FILE)) u_vram (
         .clk    (clk),
         .a_addr (copying ? caddr[13:0] : cpu_a[13:0]),
         .a_din  (copying ? divram_q : cpu_do),
         .a_we   (copying ? (cwrite && !caddr[15] && !caddr[14])
-                         : (mem_wr && (cpu_a[15:14] == 2'b01))),
+                         : (mem_wr && (win4 || winC_v5))),
         .a_dout (vram_q),
         .b_addr (video_addr),
-        .b_dout (video_data)
+        .b_dout (vram5_video)
     );
+
+    generate
+        if (HAS_128K) begin : g_vram7
+            vram #(.ADDR_W(14)) u_vram7 (
+                .clk    (clk),
+                .a_addr (cpu_a[13:0]),
+                .a_din  (cpu_do),
+                .a_we   (mem_wr && winC_v7),
+                .a_dout (vram7_q),
+                .b_addr (video_addr),
+                .b_dout (vram7_video)
+            );
+        end else begin : g_no_vram7
+            assign vram7_q     = 8'hFF;
+            assign vram7_video = 8'hFF;
+        end
+    endgenerate
+
+    assign video_data = (mode128 && scr_sel) ? vram7_video : vram5_video;
 
     // Modulo-32K arithmetic makes the top bit irrelevant.
     wire [14:0] caddr_hi = caddr[14:0] - 15'd16384;
 
+    // 48K-mode upper RAM. In 128K mode it idles: 0x8000+ goes to SDRAM (or
+    // the screen banks), and snapshots -- the copier's only customer -- are
+    // a 48K affair by definition.
     ram #(.ADDR_W(15), .INIT_FILE(RAM_FILE)) u_ramhi (
         .clk  (clk),
         .addr (copying ? caddr_hi : cpu_a[14:0]),
         .din  (copying ? divram_q : cpu_do),
         .we   (copying ? (cwrite && (caddr[15] || caddr[14]))
-                       : (mem_wr && cpu_a[15])),
+                       : (mem_wr && cpu_a[15] && !mode128)),
         .dout (ramhi_q)
     );
+
+    // -----------------------------------------------------------------------
+    // SDRAM glue: one access in flight, WAIT stretching the CPU on the
+    // alignments where 7 controller cycles poke out of the Z80's window.
+    // Reads latch into sd_rdata and hold until the memory cycle ends;
+    // writes are fire-and-forget unless the controller is still busy.
+    // -----------------------------------------------------------------------
+    wire        sd_busy, sd_valid, sd_ready;
+    wire [7:0]  sd_dout;
+    reg         sd_req;
+    reg         sd_we_r;
+    reg  [24:0] sd_addr_r;
+    reg  [7:0]  sd_din_r;
+    reg         sd_want, sd_have;
+    reg  [7:0]  sd_rdata;
+    reg         mem_rd_d, mem_wr_d;
+
+    wire [24:0] sd_addr_now = {8'd0, win8 ? 3'd2 : c_bank, cpu_a[13:0]};
+    wire sd_rd_start = sdram_sel && mem_rd && !mem_rd_d;
+    wire sd_wr_start = sdram_sel && mem_wr && !mem_wr_d;
+
+    always @(posedge clk) begin
+        mem_rd_d <= mem_rd;
+        mem_wr_d <= mem_wr;
+        sd_req   <= 1'b0;
+        if (rst) begin
+            sd_want <= 1'b0; sd_have <= 1'b0;
+            sd_we_r <= 1'b0; sd_addr_r <= 25'd0; sd_din_r <= 8'd0;
+            sd_rdata <= 8'd0;
+        end else begin
+            if (sd_rd_start || sd_wr_start) begin
+                sd_want   <= 1'b1;
+                sd_we_r   <= sd_wr_start;
+                sd_addr_r <= sd_addr_now;
+                sd_din_r  <= cpu_do;
+                if (sd_rd_start) sd_have <= 1'b0;
+            end
+            if (sd_want && !sd_busy && !sd_req) begin
+                sd_req  <= 1'b1;
+                sd_want <= 1'b0;
+            end
+            if (sd_valid) begin
+                sd_rdata <= sd_dout;
+                sd_have  <= 1'b1;
+            end
+        end
+    end
+
+    // Reads stall until the byte is home; writes only if a previous access
+    // still owns the controller.
+    wire sd_wait = (sdram_sel && mem_rd && !sd_have) ||
+                   (sd_want && sd_we_r);
+
+    sdram u_sdram (
+        .clk (clk), .rst (rst),
+        .addr (sd_addr_r), .din (sd_din_r), .we (sd_we_r),
+        .req (sd_req), .dout (sd_dout), .valid (sd_valid),
+        .busy (sd_busy), .ready (sd_ready),
+        .dram_addr (dram_addr), .dram_ba (dram_ba),
+        .dq_in (dram_dq_in), .dq_out (dram_dq_out), .dq_oe (dram_dq_oe),
+        .dram_ldqm (dram_ldqm), .dram_udqm (dram_udqm),
+        .dram_ras_n (dram_ras_n), .dram_cas_n (dram_cas_n),
+        .dram_we_n (dram_we_n), .dram_cs_n (dram_cs_n),
+        .dram_cke (dram_cke)
+    );
+
+    /* verilator lint_off UNUSEDSIGNAL */
+    wire _sd_unused = sd_ready;
+    /* verilator lint_on UNUSEDSIGNAL */
 
     // -----------------------------------------------------------------------
     // Snapshot boot overlay: a 256-byte ROM shadowing 0x0000-0x00FF while
@@ -461,24 +616,40 @@ module speccy #(
     wire eb_rd_wait = io_rd && io_eb && spi_busy && !eb_r_lat;
     wire eb_wr_wait = io_wr_raw && io_eb && spi_busy;
     wire e7_wait    = io_wr_raw && io_e7 && spi_busy;
-    assign cpu_wait_n = !(eb_rd_wait || eb_wr_wait || e7_wait);
+    assign cpu_wait_n = !(eb_rd_wait || eb_wr_wait || e7_wait || sd_wait);
+
+    // #7FFD, write-only, lock bit latched until reset. Any OUT with A15=0
+    // and A1=0 hits it -- the famous "port 0xFD" 128K quirk, faithfully.
+    always @(posedge clk) begin
+        if (rst)                                          p7ffd <= 6'd0;
+        else if (mode128 && io_wr && !cpu_a[15] && !cpu_a[1] && !p7ffd[5])
+            p7ffd <= cpu_do[5:0];
+    end
 
     // The RAMs register their outputs, so the bank select has to be delayed to
     // match or the mux picks the wrong one.
     reg [1:0] rd_bank;
     reg       rd_stub, rd_divrom, rd_divram;
+    reg       rd_sd, rd_v5c, rd_v7, rd_rom128;
     always @(posedge clk) begin
         rd_bank   <= cpu_a[15:14];
         rd_stub   <= overlay_armed && (cpu_a[15:8] == 8'h00);
         rd_divrom <= div_low && !mapram;
         rd_divram <= (div_low && mapram) || div_win;
+        rd_sd     <= sdram_sel;
+        rd_v5c    <= winC_v5;
+        rd_v7     <= winC_v7;
+        rd_rom128 <= mode128 && !rom_sel;
     end
 
     wire [7:0] mem_data = rd_stub             ? stub_q   :
                           rd_divrom           ? esx_q    :
                           rd_divram           ? divram_q :
-                          (rd_bank == 2'b00)  ? rom_q    :
-                          (rd_bank == 2'b01)  ? vram_q   : ramhi_q;
+                          (rd_bank == 2'b00)  ? (rd_rom128 ? rom128_q : rom_q) :
+                          (rd_bank == 2'b01)  ? vram_q   :
+                          rd_sd               ? sd_rdata :
+                          rd_v5c              ? vram_q   :
+                          rd_v7               ? vram7_q  : ramhi_q;
 
     // -----------------------------------------------------------------------
     // Ports

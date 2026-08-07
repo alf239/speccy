@@ -48,7 +48,8 @@ joytest: $(JOY_EXE)
 BUS_MDIR := obj_dir_bus
 BUS_EXE  := $(BUS_MDIR)/bus_tb
 BUS_RTL  := rtl/video_timing.v rtl/vram.v rtl/ram.v rtl/video.v rtl/palette.v \
-            rtl/scandoubler.v rtl/keyboard.v rtl/spi_master.v rtl/ay8912.v rtl/speccy.v \
+            rtl/scandoubler.v rtl/keyboard.v rtl/spi_master.v rtl/ay8912.v \
+            rtl/sdram.v rtl/speccy.v \
             sim/speccy_tb_top.v
 
 # Known ROM contents for the bus tests; must match test_rom_byte() in bus_tb.cpp
@@ -59,7 +60,11 @@ sim/test_rom.hex:
 sim/esx_rom.hex:
 	@python3 -c "print('\n'.join('%02X' % ((i*11+5)&0xFF) for i in range(8192)))" > $@
 
-$(BUS_EXE): $(BUS_RTL) sim/bus_tb.cpp sim/test_rom.hex sim/esx_rom.hex
+# Known 128-editor-ROM contents; must match rom128_byte() in bus_tb.cpp
+sim/rom128.hex:
+	@python3 -c "print('\n'.join('%02X' % ((i*13+7)&0xFF) for i in range(16384)))" > $@
+
+$(BUS_EXE): $(BUS_RTL) sim/bus_tb.cpp sim/sdram_model.h sim/test_rom.hex sim/esx_rom.hex sim/rom128.hex
 	$(VERILATOR) --cc --exe --build -j 0 --top-module speccy_tb_top \
 	  --Mdir $(BUS_MDIR) -o bus_tb \
 	  -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY \
@@ -74,7 +79,8 @@ CPU_EXE  := $(CPU_MDIR)/cpu_tb
 TV80_RTL := rtl/tv80/tv80s.v rtl/tv80/tv80_core.v rtl/tv80/tv80_alu.v \
             rtl/tv80/tv80_mcode.v rtl/tv80/tv80_reg.v
 CPU_RTL  := rtl/video_timing.v rtl/vram.v rtl/ram.v rtl/video.v rtl/palette.v \
-            rtl/scandoubler.v rtl/keyboard.v rtl/spi_master.v rtl/ay8912.v rtl/speccy.v \
+            rtl/scandoubler.v rtl/keyboard.v rtl/spi_master.v rtl/ay8912.v \
+            rtl/sdram.v rtl/speccy.v \
             rtl/speccy48.v $(TV80_RTL) sim/speccy48_tb_top.v
 
 sim/cpu_rom.hex: sim/make_cpu_rom.py
@@ -96,7 +102,8 @@ BOOT_MDIR := obj_dir_boot
 BOOT_EXE  := $(BOOT_MDIR)/boot_tb
 BOOT_RTL  := rtl/video_timing.v rtl/vram.v rtl/ram.v rtl/video.v rtl/palette.v \
              rtl/ps2_rx.v rtl/ps2_keyboard.v rtl/spi_master.v \
-             rtl/scandoubler.v rtl/keyboard.v rtl/ay8912.v rtl/speccy.v rtl/speccy48.v \
+             rtl/scandoubler.v rtl/keyboard.v rtl/ay8912.v \
+             rtl/sdram.v rtl/speccy.v rtl/speccy48.v \
              $(TV80_RTL) sim/boot_tb_top.v
 # The ROM path is baked in as out/bootrom.hex; the file is re-generated per
 # run ($readmemh reads at runtime, so no rebuild when the ROM changes).
@@ -112,6 +119,7 @@ $(BOOT_EXE): $(BOOT_RTL) sim/boot_tb.cpp
 	  -GSTUB_FILE='"out/snap_stub.hex"' \
 	  -GSNAP_FILE='"out/snap_all.hex"' \
 	  -GDIVMMC_ROM='"out/esxdos.hex"' \
+	  -GROM128_FILE='"out/rom128.hex"' \
 	  tv80.vlt $(BOOT_RTL) sim/boot_tb.cpp
 
 # Placeholder snapshot files so non-snapshot runs stay warning-free.
@@ -122,6 +130,7 @@ out/snap_stub.hex:
 	@python3 -c "print('00\n'*32768, end='')" > out/snap_ram.hex
 	@python3 -c "print('00\n'*8192, end='')"  > out/esxdos.hex
 	@python3 -c "print('00\n'*65536, end='')" > out/snap_all.hex
+	@python3 -c "print('00\n'*16384, end='')" > out/rom128.hex
 
 boottest: $(BOOT_EXE) sim/cpu_rom.hex out/snap_stub.hex
 	@mkdir -p out
@@ -209,6 +218,9 @@ sdramtest: $(SDRAM_EXE)
 # esxDOS boot in simulation:
 #   make esx ROM=48.rom ESX=path/to/ESXMMC.BIN SDDIR=path/to/esxdos-unzipped
 #            [FRAMES=n] [NMI=frame] [RESET=frame]
+#            [ROM128=128-0.rom]  -- boots the 128K machine (needs the 16K
+#                                   128 editor ROM; ROM= stays the 48 ROM)
+#            [TAP=game.tap]      -- extra tape at GAMES/GAME.TAP on the card
 # RESET=n soft-resets mid-run (what KEY[0] does): the frames after it must
 # show a full cold boot again -- banner, detection, mount -- thanks to the
 # divRAM wipe. NB: boottest/snaptest overwrite out/*.hex with test ROMs, so
@@ -219,9 +231,12 @@ esx: $(BOOT_EXE)
 	python3 tools/bin2hex.py $(ROM) out/bootrom.hex
 	python3 tools/bin2hex.py $(ESX) out/esxdos.hex 8192
 	python3 tools/make_test_tap.py out/hello.tap
-	python3 tools/make_sd_image.py out/sd.img --tree $(SDDIR) --add out/hello.tap=GAMES/HELLO.TAP
+	python3 tools/make_sd_image.py out/sd.img --tree $(SDDIR) --add out/hello.tap=GAMES/HELLO.TAP \
+	  $(if $(TAP),--add "$(TAP)"=GAMES/GAME.TAP,)
+	$(if $(ROM128),python3 tools/bin2hex.py $(ROM128) out/rom128.hex 16384,)
 	./$(BOOT_EXE) --esx --sd out/sd.img --frames $(or $(FRAMES),250) \
-	  $(if $(NMI),--nmi-at $(NMI),) $(if $(RESET),--reset-at $(RESET),) --out out/esx.bmp
+	  $(if $(NMI),--nmi-at $(NMI),) $(if $(RESET),--reset-at $(RESET),) \
+	  $(if $(ROM128),--128,) --out out/esx.bmp
 	@echo "wrote out/esx.bmp"
 
 # Everything that can be checked without hardware.

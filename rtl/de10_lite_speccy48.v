@@ -6,13 +6,12 @@
 //
 //   SW[9]      sync polarity (flip if the monitor won't lock)
 //   SW[8]      AY envelope resolution: down = AY (16 steps), up = YM (32)
+//   SW[2]      force 48K: up + reset = the classic machine even with a
+//              128 ROM built in (the machine boots 128K by default)
 //   SW[1]      snapshot mode: ON + reset = boot straight into the snapshot
 //              baked in via snap_{stub,vram,ram}.hex (tools/snap2hex.py);
-//              OFF + reset = normal BASIC boot
-//   SW[5:2]    autokey: hold matrix keys ENTER / SPACE / 1 / 2 while up --
-//              enough to drive most game menus until the keyboard arrives
-//   SW[6]      tap-key J, SW[7] tap-key S: flipping UP delivers one ~80 ms
-//              keypress then releases; flip down to re-arm (menu letters)
+//              OFF + reset = normal BASIC boot (48K implied)
+//   SW[7:3]    free (the autokey crutches retired with the real keyboard)
 //   KEY[0]     reset (hold)
 //   LEDR[4:0]  joystick     LEDR[7:5] border     LEDR[8] PLL lock
 //   LEDR[9]    heartbeat    HEX1/HEX0 Kempston port byte
@@ -61,6 +60,18 @@ module de10_lite_speccy48 (
     output wire [3:0]  VGA_B,
     output wire        VGA_HS,
     output wire        VGA_VS,
+
+    output wire [12:0] DRAM_ADDR,
+    output wire [1:0]  DRAM_BA,
+    inout  wire [15:0] DRAM_DQ,
+    output wire        DRAM_LDQM,
+    output wire        DRAM_UDQM,
+    output wire        DRAM_RAS_N,
+    output wire        DRAM_CAS_N,
+    output wire        DRAM_WE_N,
+    output wire        DRAM_CS_N,
+    output wire        DRAM_CKE,
+    output wire        DRAM_CLK,
 
     inout  wire [35:0] GPIO
 );
@@ -178,39 +189,43 @@ module de10_lite_speccy48 (
     wire [2:0] border;
     wire       mic;
 
-    // Autokey: a few menu keys on switches, OR-ed into the matrix.
-    // SW[5:2] are level-held keys; SW[7:6] are edge-triggered single taps.
-    wire key_j, key_s;
-
-    key_tap u_key_j (.clk (clk14), .rst (rst), .sw (SW[6]), .pressed (key_j));
-    key_tap u_key_s (.clk (clk14), .rst (rst), .sw (SW[7]), .pressed (key_s));
-
-    wire [39:0] autokey;
-    assign autokey = ({39'd0, SW[2]} << 30)    // ENTER
-                   | ({39'd0, SW[3]} << 35)    // SPACE
-                   | ({39'd0, SW[4]} << 15)    // 1
-                   | ({39'd0, SW[5]} << 16)    // 2
-                   | ({39'd0, key_j} << 33)    // J   (row A14, key 3)
-                   | ({39'd0, key_s} << 6);    // S   (row A9,  key 1)
-
+    // The autokey/tap-key switches retired with the arrival of a real
+    // keyboard (2026-08-08). Their switches are free; SW[2] now forces the
+    // machine to 48K when a 128 ROM is built in.
     wire        divmode = SW[0] && !SW[1];  // snapshot mode outranks divMMC
     wire [15:0] dbg_sd;
+
+    // SDRAM: clock inverted so the chip samples mid-window; DQ tristate
+    // owned here, controller inside the machine.
+    wire [15:0] dram_dq_out;
+    wire        dram_dq_oe;
+    assign DRAM_DQ  = dram_dq_oe ? dram_dq_out : 16'hZZZZ;
+    assign DRAM_CLK = ~clk14;
 
     speccy48 #(.ROM_FILE("rom48.hex"), .VRAM_FILE("snap_vram.hex"),
                .RAM_FILE("snap_ram.hex"), .STUB_FILE("snap_stub.hex"),
                .SNAP_FILE("snap_all.hex"),
-               .DIVMMC_ROM("esxdos.hex")) u_speccy (
+               .DIVMMC_ROM("esxdos.hex"),
+               .ROM128_FILE("rom128.hex")) u_speccy (
         .clk          (clk14),
         .rst          (rst),
         .arm_snapshot (SW[1]),
         .divmmc_en    (divmode),
+        .en_128       (!SW[2]),            // SW[2] up = force 48K
         .nmi_button   (!KEY[1]),
         .sd_cs        (sd_cs),
         .sd_sck       (sd_sck),
         .sd_mosi      (sd_mosi),
         .sd_miso      (GPIO[18]),
         .dbg_sd       (dbg_sd),
-        .key_matrix (ps2_matrix | autokey),
+        .dram_addr (DRAM_ADDR), .dram_ba (DRAM_BA),
+        .dram_dq_in (DRAM_DQ), .dram_dq_out (dram_dq_out),
+        .dram_dq_oe (dram_dq_oe),
+        .dram_ldqm (DRAM_LDQM), .dram_udqm (DRAM_UDQM),
+        .dram_ras_n (DRAM_RAS_N), .dram_cas_n (DRAM_CAS_N),
+        .dram_we_n (DRAM_WE_N), .dram_cs_n (DRAM_CS_N),
+        .dram_cke (DRAM_CKE),
+        .key_matrix (ps2_matrix),
         .joy_state  (joy_state),
         .ear_in     (1'b1),
         .ym_mode    (SW[8]),               // up = YM 32-step envelopes

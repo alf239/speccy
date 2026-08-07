@@ -23,6 +23,21 @@ module speccy_tb_top (
     output wire        int_n,
 
     input  wire        divmmc_en,
+    input  wire        en_128,
+
+    output wire [12:0] dram_addr,
+    output wire [1:0]  dram_ba,
+    input  wire [15:0] dram_dq_in,
+    output wire [15:0] dram_dq_out,
+    output wire        dram_dq_oe,
+    output wire        dram_ldqm,
+    output wire        dram_udqm,
+    output wire        dram_ras_n,
+    output wire        dram_cas_n,
+    output wire        dram_we_n,
+    output wire        dram_cs_n,
+    output wire        dram_cke,
+
     input  wire [39:0] key_matrix,
     input  wire [4:0]  joy_state,
     input  wire        ear_in,
@@ -38,8 +53,17 @@ module speccy_tb_top (
     wire _unused_sck = sd_sck_w;
 
     speccy #(.ROM_FILE("sim/test_rom.hex"),
-             .DIVMMC_ROM("sim/esx_rom.hex")) u_speccy (
+             .DIVMMC_ROM("sim/esx_rom.hex"),
+             .ROM128_FILE("sim/rom128.hex")) u_speccy (
         .clk (clk), .rst (rst), .arm_snapshot (1'b0), .divmmc_en (divmmc_en),
+        .en_128 (en_128),
+        .dram_addr (dram_addr), .dram_ba (dram_ba),
+        .dram_dq_in (dram_dq_in), .dram_dq_out (dram_dq_out),
+        .dram_dq_oe (dram_dq_oe),
+        .dram_ldqm (dram_ldqm), .dram_udqm (dram_udqm),
+        .dram_ras_n (dram_ras_n), .dram_cas_n (dram_cas_n),
+        .dram_we_n (dram_we_n), .dram_cs_n (dram_cs_n),
+        .dram_cke (dram_cke),
         .boot_busy (), .cpu_wait_n (cpu_wait_n),
         .sd_cs (sd_cs), .sd_sck (sd_sck_w), .sd_mosi (sd_mosi_w),
         .sd_miso (sd_mosi_w),          // loopback: every exchange echoes

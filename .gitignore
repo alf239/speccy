@@ -19,3 +19,5 @@ quartus/incremental_db/
 quartus/esxdos.hex
 __pycache__/
 *.pyc
+quartus/rom128.hex
+sim/rom128.hex

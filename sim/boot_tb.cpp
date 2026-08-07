@@ -21,6 +21,7 @@
 #include <verilated.h>
 #include "Vboot_tb_top.h"
 #include "sd_model.h"
+#include "sdram_model.h"
 
 #include <cstdio>
 #include <cstring>
@@ -156,6 +157,7 @@ int main(int argc, char** argv) {
     bool esx = false;
     int  nmi_at = -1;
     int  reset_at = -1;                // plain KEY[0]-style reset at this frame
+    bool m128 = false;                 // boot the 128K machine
 
     for (int i = 1; i < argc; i++) {
         if      (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
@@ -169,6 +171,7 @@ int main(int argc, char** argv) {
         else if (!strcmp(argv[i], "--sd")     && i + 1 < argc) sd_path = argv[++i];
         else if (!strcmp(argv[i], "--nmi-at") && i + 1 < argc) nmi_at = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--reset-at") && i + 1 < argc) reset_at = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--128"))                    m128 = true;
         else if (!strcmp(argv[i], "--esx"))                    esx = true;
         else if (!strcmp(argv[i], "--sdlog"))                  { /* set below */ }
         else if (!strcmp(argv[i], "--expect-snap"))            { snap = true; expect_snap = true; }
@@ -183,8 +186,11 @@ int main(int argc, char** argv) {
     top.ps2_clk = 1; top.ps2_data = 1;
     top.arm_snapshot = snap ? 1 : 0;
     top.divmmc_en = esx ? 1 : 0;
+    top.en_128 = m128 ? 1 : 0;
     top.nmi_button = 0;
     top.sd_miso = 1;
+    top.dram_dq_in = 0xFFFF;
+    SdramModel sdram_chip;
 
     SdModel* card = nullptr;
     if (!sd_path.empty()) {
@@ -229,6 +235,14 @@ int main(int argc, char** argv) {
         top.clk = 0; top.eval();
         top.clk = 1; top.eval();
         if (card) top.sd_miso = card->step(top.sd_cs, top.sd_sck, top.sd_mosi) ? 1 : 0;
+        {
+            uint16_t dq = 0xFFFF;
+            sdram_chip.step(top.dram_cs_n, top.dram_ras_n, top.dram_cas_n,
+                            top.dram_we_n, top.dram_addr, top.dram_ba,
+                            top.dram_ldqm, top.dram_udqm,
+                            top.dram_dq_out, top.dram_dq_oe, dq);
+            top.dram_dq_in = dq;
+        }
 
         if (!wav_path.empty() && ++wav_div == 320) {
             wav_div = 0;

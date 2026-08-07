@@ -13,12 +13,14 @@ module speccy48 #(
     parameter RAM_FILE   = "",
     parameter STUB_FILE  = "",
     parameter SNAP_FILE  = "",
-    parameter DIVMMC_ROM = ""
+    parameter DIVMMC_ROM = "",
+    parameter ROM128_FILE = ""
 )(
     input  wire        clk,          // 14 MHz
     input  wire        rst,
     input  wire        arm_snapshot, // sampled at reset; tie low for normal boot
     input  wire        divmmc_en,    // runtime divMMC enable
+    input  wire        en_128,       // 128K mode request, sampled at reset
     input  wire        nmi_button,   // active high; one press = one NMI
 
     output wire        sd_cs,
@@ -26,6 +28,19 @@ module speccy48 #(
     output wire        sd_mosi,
     input  wire        sd_miso,
     output wire [15:0] dbg_sd,      // SD diagnostics: {exchange ctr, last rx}
+
+    output wire [12:0] dram_addr,
+    output wire [1:0]  dram_ba,
+    input  wire [15:0] dram_dq_in,
+    output wire [15:0] dram_dq_out,
+    output wire        dram_dq_oe,
+    output wire        dram_ldqm,
+    output wire        dram_udqm,
+    output wire        dram_ras_n,
+    output wire        dram_cas_n,
+    output wire        dram_we_n,
+    output wire        dram_cs_n,
+    output wire        dram_cke,
 
     input  wire [39:0] key_matrix,
     input  wire [4:0]  joy_state,
@@ -91,11 +106,13 @@ module speccy48 #(
 
     speccy #(.ROM_FILE(ROM_FILE), .VRAM_FILE(VRAM_FILE),
              .RAM_FILE(RAM_FILE), .STUB_FILE(STUB_FILE),
-             .SNAP_FILE(SNAP_FILE), .DIVMMC_ROM(DIVMMC_ROM)) u_machine (
+             .SNAP_FILE(SNAP_FILE), .DIVMMC_ROM(DIVMMC_ROM),
+             .ROM128_FILE(ROM128_FILE)) u_machine (
         .clk          (clk),
         .rst          (rst),
         .arm_snapshot (arm_snapshot),
         .divmmc_en    (divmmc_en),
+        .en_128       (en_128),
         .boot_busy    (boot_busy),
         .cpu_wait_n   (cpu_wait_n),
         .sd_cs        (sd_cs),
@@ -103,6 +120,13 @@ module speccy48 #(
         .sd_mosi      (sd_mosi),
         .sd_miso      (sd_miso),
         .dbg_sd       (dbg_sd),
+        .dram_addr (dram_addr), .dram_ba (dram_ba),
+        .dram_dq_in (dram_dq_in), .dram_dq_out (dram_dq_out),
+        .dram_dq_oe (dram_dq_oe),
+        .dram_ldqm (dram_ldqm), .dram_udqm (dram_udqm),
+        .dram_ras_n (dram_ras_n), .dram_cas_n (dram_cas_n),
+        .dram_we_n (dram_we_n), .dram_cs_n (dram_cs_n),
+        .dram_cke (dram_cke),
         .ce_cpu     (ce_cpu),
         .ce_pix     (),
         .cpu_a      (cpu_a),
