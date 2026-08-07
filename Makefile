@@ -193,6 +193,19 @@ $(AY_EXE): rtl/ay8912.v sim/ay_tb.cpp
 aytest: $(AY_EXE)
 	./$(AY_EXE)
 
+# SDRAM controller + behavioural model.
+SDRAM_MDIR := obj_dir_sdram
+SDRAM_EXE  := $(SDRAM_MDIR)/sdram_tb
+
+$(SDRAM_EXE): rtl/sdram.v sim/sdram_model.h sim/sdram_tb.cpp
+	$(VERILATOR) --cc --exe --build -j 0 --top-module sdram \
+	  --Mdir $(SDRAM_MDIR) -o sdram_tb \
+	  -Wall -Wno-DECLFILENAME \
+	  rtl/sdram.v sim/sdram_tb.cpp
+
+sdramtest: $(SDRAM_EXE)
+	./$(SDRAM_EXE)
+
 # esxDOS boot in simulation:
 #   make esx ROM=48.rom ESX=path/to/ESXMMC.BIN SDDIR=path/to/esxdos-unzipped
 #            [FRAMES=n] [NMI=frame] [RESET=frame]
@@ -212,7 +225,7 @@ esx: $(BOOT_EXE)
 	@echo "wrote out/esx.bmp"
 
 # Everything that can be checked without hardware.
-test: run joytest bustest cputest boottest ps2test snaptest sdtest aytest
+test: run joytest bustest cputest boottest ps2test snaptest sdtest aytest sdramtest
 
 lint:
 	$(VERILATOR) --lint-only --top-module $(TOP) -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY $(RTL)

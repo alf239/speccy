@@ -187,8 +187,10 @@ Phase 2 — the Scorpion story — has begun:
 - [x] **AY-3-8912** (sim, 2026-08-06): from-scratch PSG on the 128K ports,
   AY/YM envelope resolution on SW[8], beeper+AY mixed through a sigma-delta
   DAC on the existing pin — `.playpt3` turns the machine into a jukebox
-- [ ] SDRAM controller against the DE10-Lite's own 64 MB chip
-- [ ] 128K: #7FFD paging, twin ROMs, Pentagon-128 timing
+- [x] **SDRAM controller** (sim, 2026-08-07): single 14 MHz domain, byte access,
+  7-cycle reads -- zero wait states; 16 checks against a behavioural model
+- [ ] 128K: #7FFD paging, twin ROMs, screens stay in M9K (video never
+  touches SDRAM -- no arbiter)
 - [ ] Scorpion: #1FFD, 256K, turbo, service ROM
 
 ## Hardware
