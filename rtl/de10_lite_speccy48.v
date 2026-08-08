@@ -192,7 +192,18 @@ module de10_lite_speccy48 (
     // The autokey/tap-key switches retired with the arrival of a real
     // keyboard (2026-08-08). Their switches are free; SW[2] now forces the
     // machine to 48K when a 128 ROM is built in.
-    wire        divmode = SW[0] && !SW[1];  // snapshot mode outranks divMMC
+    // Mode switches are sampled at reset only: yanking the divMMC (or the
+    // snapshot arm, or 48/128) out from under a running machine crashes it
+    // through its own hooks -- flip switches, then press KEY[0].
+    reg divmode_r, arm_r, en128_r;
+    always @(posedge clk14) begin
+        if (rst) begin
+            divmode_r <= SW[0] && !SW[1];   // snapshot mode outranks divMMC
+            arm_r     <= SW[1];
+            en128_r   <= !SW[2];            // SW[2] up = force 48K
+        end
+    end
+    wire        divmode = divmode_r;
     wire [15:0] dbg_sd;
 
     // SDRAM: clock inverted so the chip samples mid-window; DQ tristate
@@ -209,9 +220,9 @@ module de10_lite_speccy48 (
                .ROM128_FILE("rom128.hex")) u_speccy (
         .clk          (clk14),
         .rst          (rst),
-        .arm_snapshot (SW[1]),
+        .arm_snapshot (arm_r),
         .divmmc_en    (divmode),
-        .en_128       (!SW[2]),            // SW[2] up = force 48K
+        .en_128       (en128_r),
         .nmi_button   (!KEY[1]),
         .sd_cs        (sd_cs),
         .sd_sck       (sd_sck),
