@@ -158,6 +158,7 @@ int main(int argc, char** argv) {
     int  nmi_at = -1;
     int  reset_at = -1;                // plain KEY[0]-style reset at this frame
     bool m128 = false;                 // boot the 128K machine
+    int  fire_at = -1;                 // hold Kempston fire for ~1s at this frame
 
     for (int i = 1; i < argc; i++) {
         if      (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
@@ -172,6 +173,7 @@ int main(int argc, char** argv) {
         else if (!strcmp(argv[i], "--nmi-at") && i + 1 < argc) nmi_at = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--reset-at") && i + 1 < argc) reset_at = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--128"))                    m128 = true;
+        else if (!strcmp(argv[i], "--fire-at") && i + 1 < argc) fire_at = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--esx"))                    esx = true;
         else if (!strcmp(argv[i], "--sdlog"))                  { /* set below */ }
         else if (!strcmp(argv[i], "--expect-snap"))            { snap = true; expect_snap = true; }
@@ -268,6 +270,8 @@ int main(int argc, char** argv) {
                     write_bmp(path, fb.data(), W, H);
                 }
                 frame_no++;
+                if (fire_at >= 0 && frame_no == fire_at)      top.joy_state = 0x10;
+                if (fire_at >= 0 && frame_no == fire_at + 50) top.joy_state = 0;
                 if (nmi_at >= 0 && frame_no == nmi_at)     top.nmi_button = 1;
                 if (nmi_at >= 0 && frame_no == nmi_at + 2) top.nmi_button = 0;
                 if (frame_no == reset_at) {
