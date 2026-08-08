@@ -189,8 +189,10 @@ Phase 2 — the Scorpion story — has begun:
   DAC on the existing pin — `.playpt3` turns the machine into a jukebox
 - [x] **SDRAM controller** (sim, 2026-08-07): single 14 MHz domain, byte access,
   7-cycle reads -- zero wait states; 16 checks against a behavioural model
-- [ ] 128K: #7FFD paging, twin ROMs, screens stay in M9K (video never
-  touches SDRAM -- no arbiter)
+- [x] **128K -- and on the real board** (2026-08-09): #7FFD paging, twin ROMs
+  (ROM1 must be the 128's own -- a debugging saga), screens in M9K, banks in
+  SDRAM. **Prince of Persia loads from the SD card and plays.** The 128 menu
+  boots (c) 1986; SW[2] forces classic 48K
 - [ ] Scorpion: #1FFD, 256K, turbo, service ROM
 
 ## Hardware
