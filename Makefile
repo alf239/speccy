@@ -86,7 +86,7 @@ CPU_RTL  := rtl/video_timing.v rtl/vram.v rtl/ram.v rtl/video.v rtl/palette.v \
 sim/cpu_rom.hex: sim/make_cpu_rom.py
 	python3 sim/make_cpu_rom.py $@
 
-$(CPU_EXE): $(CPU_RTL) sim/cpu_tb.cpp sim/cpu_rom.hex
+$(CPU_EXE): $(CPU_RTL) sim/cpu_tb.cpp sim/sdram_model.h sim/cpu_rom.hex
 	$(VERILATOR) --cc --exe --build -j 0 --top-module speccy48_tb_top \
 	  --Mdir $(CPU_MDIR) -o cpu_tb \
 	  -Wall -Wno-DECLFILENAME -Wno-PINCONNECTEMPTY \
@@ -94,6 +94,7 @@ $(CPU_EXE): $(CPU_RTL) sim/cpu_tb.cpp sim/cpu_rom.hex
 
 cputest: $(CPU_EXE)
 	./$(CPU_EXE)
+	./$(CPU_EXE) --128
 
 # Boot test -- the full machine watched like a monitor (sync-locked capture).
 # Default ROM is the smoke ROM so this runs without any copyrighted image;

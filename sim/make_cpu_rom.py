@@ -62,12 +62,62 @@ ay_setup = bytes([
     0x06, 0xBF,             # ld b, 0xBF
     0x3E, 0x0F,             # ld a, 15
     0xED, 0x79,             # out (c), a         ; full volume
+    0xC3, 0xC0, 0x00,       # jp 0x00C0          ; on to the paging probe
+])
+rom[0x80:0x80 + len(ay_setup)] = ay_setup
+
+# 0x00C0: #7FFD paging probe, the way the 128 ROM does it -- distinct bytes
+# into two banks at 0xC100, then read both back and park the results in the
+# screen at 0x4001/0x4002 where the testbench taps them.
+#   128 mode: expect 0xA0, 0xA1 (bank 0 is SDRAM -- real-CPU coverage).
+#   48K mode: 7FFD is inert, both writes hit the same ramhi cell: 0xA1, 0xA1.
+paging = bytes([
+    0x01, 0xFD, 0x7F,       # ld bc, 0x7FFD
+    0x3E, 0x00,             # ld a, 0
+    0xED, 0x79,             # out (c), a         ; bank 0
+    0x3E, 0xA0,             # ld a, 0xA0
+    0x32, 0x00, 0xC1,       # ld (0xC100), a
+    0x3E, 0x01,             # ld a, 1
+    0xED, 0x79,             # out (c), a         ; bank 1
+    0x3E, 0xA1,             # ld a, 0xA1
+    0x32, 0x00, 0xC1,       # ld (0xC100), a
+    0x3E, 0x00,             # ld a, 0
+    0xED, 0x79,             # out (c), a         ; back to bank 0
+    0x3A, 0x00, 0xC1,       # ld a, (0xC100)
+    0x32, 0x01, 0x40,       # ld (0x4001), a
+    0x3E, 0x01,             # ld a, 1
+    0xED, 0x79,             # out (c), a         ; bank 1 again
+    0x3A, 0x00, 0xC1,       # ld a, (0xC100)
+    0x32, 0x02, 0x40,       # ld (0x4002), a
+    0xC3, 0x00, 0x01,       # jp 0x0100          ; execute-from-RAM probe
+])
+rom[0xC0:0xC0 + len(paging)] = paging
+
+# 0x0100: copy a tiny routine into RAM at 0xC200 and CALL it. In 128K mode
+# that is SDRAM bank 0 -- the one bus pattern nothing else exercises is the
+# M1 opcode fetch from SDRAM (shorter sample point than a data read). The
+# routine stores 0x5A at 0x4003 and returns; a missing marker or a wild
+# return means fetch-from-SDRAM is broken. In 48K mode it runs from ramhi
+# and must succeed identically.
+exec_probe = bytes([
+    0x21, 0x20, 0x01,       # ld hl, 0x0120      ; routine image below
+    0x11, 0x00, 0xC2,       # ld de, 0xC200
+    0x01, 0x06, 0x00,       # ld bc, 6
+    0xED, 0xB0,             # ldir
+    0xCD, 0x00, 0xC2,       # call 0xC200
     0xFB,                   # ei
     # halt loop
     0x76,                   # halt
     0x18, 0xFD,             # jr halt
 ])
-rom[0x80:0x80 + len(ay_setup)] = ay_setup
+rom[0x100:0x100 + len(exec_probe)] = exec_probe
+
+ram_routine = bytes([
+    0x3E, 0x5A,             # ld a, 0x5A
+    0x32, 0x03, 0x40,       # ld (0x4003), a
+    0xC9,                   # ret
+])
+rom[0x120:0x120 + len(ram_routine)] = ram_routine
 
 isr = bytes([
     # 0x0038  IM 1 handler

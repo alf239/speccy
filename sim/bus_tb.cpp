@@ -52,8 +52,8 @@ static void idle() {
 static uint8_t mem_read(uint16_t a) {
     top->cpu_a = a; top->mreq_n = 0; top->rd_n = 0;
     tick(4);
-    int guard = 1000;
-    while (!top->cpu_wait_n && guard--) tick();   // SDRAM reads stretch
+    int guard = 40000;
+    while (!top->cpu_wait_n && guard--) tick();   // SDRAM reads stretch (init too)
     tick(1);
     uint8_t d = top->cpu_di;
     idle();
@@ -63,8 +63,8 @@ static uint8_t mem_read(uint16_t a) {
 static void mem_write(uint16_t a, uint8_t d) {
     top->cpu_a = a; top->cpu_do = d; top->mreq_n = 0; top->wr_n = 0;
     tick(4);
-    int guard = 1000;
-    while (!top->cpu_wait_n && guard--) tick();   // SDRAM backpressure
+    int guard = 40000;
+    while (!top->cpu_wait_n && guard--) tick();   // SDRAM backpressure (init too)
     idle();
 }
 
@@ -384,7 +384,10 @@ int main(int argc, char** argv) {
     top->divmmc_en = 0;
     top->en_128 = 1;
     top->rst = 1; idle(); tick(16); top->rst = 0;
-    for (int i = 0; i < 30000; i++) tick();       // SDRAM init (~2 ms)
+    // No init wait on purpose: the first accesses below arrive while the
+    // SDRAM controller is still initialising, exactly like the 128 ROM's
+    // RAM test on real hardware -- WAIT must carry the CPU through it.
+    tick(32);
 
     // ROM select: reset state is ROM0, the 128 editor.
     check("ROM0 (128 editor) mapped",  mem_read(0x0001), rom128_byte(1));

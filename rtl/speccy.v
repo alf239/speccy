@@ -295,7 +295,12 @@ module speccy #(
                 sd_din_r  <= cpu_do;
                 if (sd_rd_start) sd_have <= 1'b0;
             end
-            if (sd_want && !sd_busy && !sd_req) begin
+            // Hold the request until the controller has finished its init
+            // ritual (~2 ms after reset) -- the 128 ROM's RAM test arrives
+            // well inside that window, and a dropped write there reads as
+            // "RAM broken", sending ROM0 straight to 48 BASIC. WAIT holds
+            // the CPU; the one-time stall is invisible.
+            if (sd_want && sd_ready && !sd_busy && !sd_req) begin
                 sd_req  <= 1'b1;
                 sd_want <= 1'b0;
             end
@@ -324,9 +329,6 @@ module speccy #(
         .dram_cke (dram_cke)
     );
 
-    /* verilator lint_off UNUSEDSIGNAL */
-    wire _sd_unused = sd_ready;
-    /* verilator lint_on UNUSEDSIGNAL */
 
     // -----------------------------------------------------------------------
     // Snapshot boot overlay: a 256-byte ROM shadowing 0x0000-0x00FF while
