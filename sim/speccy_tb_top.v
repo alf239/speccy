@@ -44,7 +44,9 @@ module speccy_tb_top (
     output wire        speaker,
     output wire [9:0]  audio,
     output wire        mic,
-    output wire [2:0]  border
+    output wire [2:0]  border,
+    output wire [3:0]  vga_r,
+    output wire [3:0]  vga_g
 );
 
     // sck deliberately unused: the loopback needs only data. Verilator is
@@ -75,7 +77,7 @@ module speccy_tb_top (
         .key_matrix (key_matrix), .joy_state (joy_state), .ear_in (ear_in),
         .ym_mode (1'b0), .audio (audio),
         .speaker (speaker), .mic (mic), .border (border),
-        .vga_r (), .vga_g (), .vga_b (),
+        .vga_r (vga_r), .vga_g (vga_g), .vga_b (),
         .vga_hsync (), .vga_vsync (), .vga_blank ()
     );
 

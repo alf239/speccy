@@ -20,6 +20,7 @@
 
 #include <verilated.h>
 #include "Vboot_tb_top.h"
+#include "Vboot_tb_top___024root.h"
 #include "sd_model.h"
 #include "sdram_model.h"
 
@@ -159,6 +160,7 @@ int main(int argc, char** argv) {
     int  reset_at = -1;                // plain KEY[0]-style reset at this frame
     bool m128 = false;                 // boot the 128K machine
     int  fire_at = -1;                 // hold Kempston fire for ~1s at this frame
+    std::string aylog_path;            // log AY register writes: frame reg val
 
     for (int i = 1; i < argc; i++) {
         if      (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = atoi(argv[++i]);
@@ -174,6 +176,7 @@ int main(int argc, char** argv) {
         else if (!strcmp(argv[i], "--reset-at") && i + 1 < argc) reset_at = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--128"))                    m128 = true;
         else if (!strcmp(argv[i], "--fire-at") && i + 1 < argc) fire_at = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--aylog")  && i + 1 < argc) aylog_path = argv[++i];
         else if (!strcmp(argv[i], "--esx"))                    esx = true;
         else if (!strcmp(argv[i], "--sdlog"))                  { /* set below */ }
         else if (!strcmp(argv[i], "--expect-snap"))            { snap = true; expect_snap = true; }
@@ -244,6 +247,25 @@ int main(int argc, char** argv) {
                             top.dram_ldqm, top.dram_udqm,
                             top.dram_dq_out, top.dram_dq_oe, dq);
             top.dram_dq_in = dq;
+        }
+
+        // AY register-write logger: snoop OUT cycles to 0xFFFD/0xBFFD.
+        if (!aylog_path.empty()) {
+            static FILE* af = nullptr;
+            static bool io_prev = false;
+            static uint16_t ioa = 0; static uint8_t iod = 0;
+            static int aysel = 0;
+            if (!af) af = fopen(aylog_path.c_str(), "w");
+            auto* r = top.rootp;
+            bool io = !r->boot_tb_top__DOT__u_ss__DOT__iorq_n &&
+                      !r->boot_tb_top__DOT__u_ss__DOT__wr_n;
+            if (io) { ioa = r->boot_tb_top__DOT__u_ss__DOT__cpu_a;
+                      iod = r->boot_tb_top__DOT__u_ss__DOT__cpu_do; }
+            if (io_prev && !io && (ioa & 0x8002) == 0x8000) {
+                if (ioa & 0x4000) aysel = iod & 0x0F;
+                else fprintf(af, "%d %d %d\n", frame_no, aysel, iod);
+            }
+            io_prev = io;
         }
 
         if (!wav_path.empty() && ++wav_div == 320) {

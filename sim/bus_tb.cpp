@@ -422,6 +422,29 @@ int main(int argc, char** argv) {
     mem_write(0x8055, 0x22);
     check("bank2 8055 == C055",        mem_read(0xC055), 0x22);
 
+    // Shadow screen: fill bank 5's attributes with white paper and bank 7's
+    // with red, then flip #7FFD bit 3 and watch the green channel: white
+    // paper has green, red paper has none. Border black so it stays out.
+    io_write(0x00FE, 0x00);
+    io_write(0x7FFD, 0x05);                        // bank 5 for good measure
+    for (int i = 0; i < 768; i++) mem_write((uint16_t)(0x5800 + i), 0x38);
+    io_write(0x7FFD, 0x07);                        // bank 7 at 0xC000
+    for (int i = 0; i < 768; i++) mem_write((uint16_t)(0xD800 + i), 0x10);
+    {
+        auto frame_has_green = [&]() {
+            long g = 0;
+            for (long i = 0; i < 279552; i++) { tick(); if (top->vga_g) g++; }
+            return g > 1000;
+        };
+        io_write(0x7FFD, 0x00);                    // screen 5: white
+        check("screen 5 shows white",  frame_has_green() ? 1 : 0, 1);
+        io_write(0x7FFD, 0x08);                    // screen 7: red
+        check("screen 7 shows red",    frame_has_green() ? 1 : 0, 0);
+        io_write(0x7FFD, 0x00);
+        check("back to screen 5",      frame_has_green() ? 1 : 0, 1);
+    }
+
+
     // Lock bit: further writes ignored until reset.
     io_write(0x7FFD, 0x20 | 3);
     mem_write(0xC077, 0x33);

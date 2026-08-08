@@ -133,10 +133,17 @@ out/snap_stub.hex:
 	@python3 -c "print('00\n'*65536, end='')" > out/snap_all.hex
 	@python3 -c "print('00\n'*16384, end='')" > out/rom128.hex
 
+# boottest/snaptest run the smoke ROM through the same baked hex paths the
+# real-ROM runs use -- so they SAVE and RESTORE them. This footgun has fired
+# three times ("black screen with a familiar tone"); never again.
 boottest: $(BOOT_EXE) sim/cpu_rom.hex out/snap_stub.hex
 	@mkdir -p out
+	@for f in bootrom rom128; do \
+	  test -f out/$$f.hex && cp out/$$f.hex out/$$f.hex.save || true; done
 	cp sim/cpu_rom.hex out/bootrom.hex
 	./$(BOOT_EXE) --frames 8 --expect-smoke --out out/boot_smoke.bmp
+	@for f in bootrom rom128; do \
+	  test -f out/$$f.hex.save && mv out/$$f.hex.save out/$$f.hex || true; done
 
 boot: $(BOOT_EXE)
 	@test -n "$(ROM)" || { echo "usage: make boot ROM=path/to/48.rom [FRAMES=n]"; exit 1; }
@@ -162,11 +169,15 @@ ps2test: $(PS2_EXE)
 # overlay, checked on the virtual monitor. No copyrighted bytes involved.
 snaptest: $(BOOT_EXE) sim/cpu_rom.hex
 	@mkdir -p out
+	@for f in bootrom rom128 snap_vram snap_ram snap_stub snap_all; do \
+	  test -f out/$$f.hex && cp out/$$f.hex out/$$f.hex.save || true; done
 	python3 tools/make_test_snap.py out/test.z80
 	python3 tools/snap2hex.py out/test.z80 out
 	cp sim/cpu_rom.hex out/bootrom.hex
 	./$(BOOT_EXE) --frames 8 --expect-snap --out out/snap_test.bmp
 	./$(BOOT_EXE) --frames 8 --snap-at 2 --expect-snap --out out/snap_rearm.bmp
+	@for f in bootrom rom128 snap_vram snap_ram snap_stub snap_all; do \
+	  test -f out/$$f.hex.save && mv out/$$f.hex.save out/$$f.hex || true; done
 
 # Boot a real snapshot:  make snap SNAP=game.z80 ROM=48.rom [FRAMES=n]
 snap: $(BOOT_EXE)
