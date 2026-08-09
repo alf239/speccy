@@ -63,13 +63,19 @@ def main():
           f"({(last - first) / 50.0:.1f} s)")
 
     # Walk frames; for each, apply writes then snapshot channel state.
+    # Envelope-mode channels (the AY buzz bass) take their PITCH from the
+    # envelope period, not the tone registers, and a write to R13 restarts
+    # the envelope -- an articulation, so it splits the note.
     events = {ch: [] for ch in "ABC"}        # (start, end, midi, vol, flags)
     cur = {ch: None for ch in "ABC"}
     wi = 0
     for fr in range(first, last + 1):
+        retrig = False
         while wi < len(writes) and writes[wi][0] <= fr:
             _, rg, vl = writes[wi]
             regs[rg] = vl
+            if rg == 13:
+                retrig = True
             wi += 1
         for ci, ch in enumerate("ABC"):
             tp = ((regs[2 * ci + 1] & 0x0F) << 8) | regs[2 * ci]
@@ -77,11 +83,22 @@ def main():
             env = bool(regs[8 + ci] & 0x10)
             tone_on = not (regs[7] >> ci) & 1
             noise_on = not (regs[7] >> (ci + 3)) & 1
-            audible = (env or vol > 0) and (tone_on or noise_on)
-            midi, freq = period_to_midi(tp) if tone_on else (None, 0)
+            if env:
+                # buzz: sounds regardless of the mixer, pitched by R11/R12
+                ep = max(1, (regs[12] << 8) | regs[11])
+                freq = 1750000.0 / (256.0 * ep)
+                # Integer envelope periods land ~50 cents flat of the tone
+                # scale; bias the naming sharp-ward toward musical intent,
+                # and drop ultrasonic envelope clicks (EP ~ 1).
+                midi = (round(69 + 12 * math.log2(freq / 440.0) + 0.45)
+                        if 20 <= freq <= 2000 else None)
+                audible = True
+            else:
+                audible = vol > 0 and (tone_on or noise_on)
+                midi, freq = period_to_midi(tp) if tone_on else (None, 0)
             key = (midi, env, noise_on) if audible else None
             state = cur[ch]
-            if state and state[2] == key:
+            if state and state[2] == key and not (env and retrig):
                 continue
             if state:
                 events[ch].append((state[0], fr, state[1], state[2]))
@@ -113,7 +130,9 @@ def main():
 
 
 def write_midi(path, events, first):
-    # One track per channel; 1 tick = 1 frame (20 ms), tempo 50 frames/beat.
+    # One track per channel; 1 tick = 1 frame (20 ms). The tune runs at
+    # 125 BPM with beats every 24 frames, so division=24 and tempo=480 ms
+    # make DAW bars line up with musical bars.
     def vlq(n):
         out = [n & 0x7F]
         n >>= 7
@@ -126,7 +145,7 @@ def write_midi(path, events, first):
     for ci, ch in enumerate("ABC"):
         data = bytearray()
         t = 0
-        data += vlq(0) + bytes([0xFF, 0x51, 0x03]) + struct.pack(">I", 1000000)[1:]
+        data += vlq(0) + bytes([0xFF, 0x51, 0x03]) + struct.pack(">I", 480000)[1:]
         for s, e, (vol, env, noise, freq), key in events[ch]:
             if not key or key[0] is None:
                 continue
@@ -139,7 +158,7 @@ def write_midi(path, events, first):
         tracks.append(bytes(data))
 
     with open(path, "wb") as f:
-        f.write(b"MThd" + struct.pack(">IHHH", 6, 1, len(tracks), 50))
+        f.write(b"MThd" + struct.pack(">IHHH", 6, 1, len(tracks), 24))
         for tr in tracks:
             f.write(b"MTrk" + struct.pack(">I", len(tr)) + tr)
 
