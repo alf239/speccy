@@ -63,10 +63,10 @@
     <text x="203.75" y="7.70">legacy, unused</text>
   </g>
   <g class="real">
-    <circle cx="192.00" cy="111.50" r="5.0" />
-    <line x1="185.00" y1="111.50" x2="199.00" y2="111.50" />
-    <line x1="192.00" y1="104.50" x2="192.00" y2="118.50" />
-    <text x="147.00" y="103.50">speaker hole ~10.0 dia PHOTO-EST: confirm</text>
+    <circle cx="192.00" cy="117.50" r="5.0" />
+    <line x1="185.00" y1="117.50" x2="199.00" y2="117.50" />
+    <line x1="192.00" y1="110.50" x2="192.00" y2="124.50" />
+    <text x="147.00" y="109.50">speaker hole ~10.0 dia PHOTO-EST: confirm</text>
   </g>
   <g class="slot">
     <rect x="27.00" y="70.50" width="16.16" height="5" />

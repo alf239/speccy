@@ -24,7 +24,7 @@ HOLES = [
     (W-14.0,     H-6.5,   3.5, "legacy, unused", True),
 ]
 
-SPEAKER = (W-21.5, 18.5, 10.0)      # photo-estimated: centre x,y_from_bottom, dia
+SPEAKER = (W-21.5, 12.5, 10.0)      # centre x photo-est; y moved 6 down per print test
 
 KB1 = dict(x_anchor=30.0,   y=57.0, pins=5, direction=+1,
            label="KB1 5-way, contacts UP, leftmost contact 30.0 fr left")

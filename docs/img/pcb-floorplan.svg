@@ -60,8 +60,8 @@
   <text x="110" y="534" class="lbl">silkscreen: build log, (c) 2026</text>
   <rect x="358" y="538" width="200" height="36" class="quiet"/>
   <text x="366" y="558" class="lbl">decoupling farm everywhere</text>
-  <circle cx="838" cy="536" r="20" class="hole"/>
-  <text x="698" y="510" class="lbl">speaker hole ~10.0mm + driver PHOTO-EST</text>
+  <circle cx="838" cy="560" r="20" class="hole"/>
+  <text x="698" y="534" class="lbl">speaker hole ~10.0mm + driver PHOTO-EST</text>
   <rect x="178" y="372" width="65" height="20" class="fix"/>
   <line x1="190" y1="368" x2="190" y2="396" class="cross"/>
   <rect x="166" y="358" width="89" height="52" class="keep"/>
