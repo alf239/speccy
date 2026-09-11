@@ -18,93 +18,78 @@
     </style>
   </defs>
   <rect x="0" y="0" width="990" height="700" fill="#f4f1e8"/>
-  <text x="28" y="30" class="title">speccy board — floorplan v0.3 (MEASURED outline 211.5 x 130 mm)</text>
-  <text x="28" y="50" class="note">4 px/mm. Component side facing you, ports at top, keyboard edge at bottom — the user's measurement frame.</text>
+  <text x="28" y="30" class="title">speccy board — floorplan v0.4 (measured: 211.5 x 130 mm; slots FLANK the board)</text>
+  <text x="28" y="50" class="note">4 px/mm. Component side facing you, ports at top. Crosshairs = measured points (nearest contact to its edge).</text>
 
-  <!-- board outline: 211.5 x 130 mm -> 846 x 520 px, origin (70,90) -->
   <rect x="70" y="90" width="846" height="520" rx="6" class="board"/>
   <text x="420" y="630" class="dim">211.5 mm (measured)</text>
   <text x="16" y="380" class="dim" transform="rotate(-90 26 380)">130 mm (measured)</text>
 
-  <!-- ===== REAR EDGE (top) ===== -->
+  <!-- REAR EDGE -->
   <rect x="140" y="94" width="120" height="48" class="conn"/>
   <text x="146" y="114" class="lbl2">2x 3.5mm jacks</text>
   <text x="146" y="130" class="lbl2">line-out + EAR-in</text>
-
   <rect x="290" y="94" width="270" height="56" class="conn"/>
   <text x="298" y="114" class="lbl2">rear strip (re-printable panel):</text>
   <text x="298" y="130" class="lbl2">VGA DE-15 | 2x DE-9 | microSD | JTAG</text>
-
   <rect x="830" y="94" width="80" height="48" class="conn"/>
   <text x="834" y="114" class="lbl2">DC 5-12V</text>
   <text x="834" y="130" class="lbl2">barrel</text>
+  <rect x="760" y="152" width="150" height="72" class="blk"/>
+  <text x="768" y="172" class="lbl">POWER: wide-in buck</text>
+  <text x="768" y="188" class="lbl">3.3V/2A + protection</text>
+  <text x="768" y="204" class="lbl">(1982-PSU-proof)</text>
+  <rect x="640" y="152" width="106" height="72" class="blk"/>
+  <text x="648" y="172" class="lbl">DIP-4 modes</text>
+  <text x="648" y="188" class="lbl">RESET + NMI</text>
+  <text x="648" y="204" class="lbl">+ case-btn hdr</text>
+  <rect x="76" y="152" width="130" height="80" class="quiet"/>
+  <text x="84" y="172" class="lbl">analog corner:</text>
+  <text x="84" y="188" class="lbl">audio RC, line drv,</text>
+  <text x="84" y="204" class="lbl">EAR divider/schmitt</text>
 
-  <rect x="760" y="150" width="150" height="76" class="blk"/>
-  <text x="768" y="170" class="lbl">POWER: wide-in buck</text>
-  <text x="768" y="186" class="lbl">3.3V/2A, polyfuse,</text>
-  <text x="768" y="202" class="lbl">reverse prot (1982-</text>
-  <text x="768" y="218" class="lbl">PSU-proof)</text>
+  <!-- KEYBOARD SLOTS: measured, fixed -->
+  <!-- 5-way: contacts from X=30 rightward ~25.4mm; slot drawn 30..64, centered on Y=57 from bottom -->
+  <rect x="182" y="372" width="144" height="20" class="fix"/>
+  <line x1="190" y1="368" x2="190" y2="396" class="cross"/>
+  <text x="78" y="416" class="lblr">KB1 5-way: leftmost contact</text>
+  <text x="78" y="432" class="lblr">30 fr left edge, 57 fr bottom</text>
+  <!-- 8-way: contacts from X=184.5 leftward ~44.5mm; slot drawn 134..186.5, centered on Y=64 from bottom -->
+  <rect x="606" y="344" width="210.0" height="20" class="fix"/>
+  <line x1="808.0" y1="340" x2="808.0" y2="368" class="cross"/>
+  <text x="606" y="334" class="lblr">KB2 8-way: rightmost contact 27 fr right edge, 64 fr bottom</text>
+  <rect x="166" y="358" width="184" height="52" class="keep"/>
+  <rect x="590" y="330" width="244" height="52" class="keep"/>
+  <text x="166" y="452" class="lblr">keep-outs: tails drop in from above. Slot lengths assume 6.35mm pitch -- CONFIRM socket lengths.</text>
 
-  <rect x="76" y="150" width="130" height="90" class="quiet"/>
-  <text x="84" y="170" class="lbl">analog corner:</text>
-  <text x="84" y="186" class="lbl">audio RC + line drv</text>
-  <text x="84" y="202" class="lbl">EAR divider/schmitt</text>
+  <!-- DIGITAL CORE in the corridor between the slots -->
+  <rect x="358" y="298" width="100" height="100" class="blk"/>
+  <text x="362" y="330" class="lbl">10M50SAE144</text>
+  <text x="362" y="346" class="lbl">22x22 EQFP</text>
+  <rect x="470" y="314" width="92" height="44" class="blk"/>
+  <text x="474" y="342" class="lbl">SDRAM</text>
+  <rect x="470" y="374" width="56" height="32" class="blk"/>
+  <text x="474" y="396.0" class="lbl">50MHz</text>
+  <text x="358" y="274" class="note" fill="#9fd7a9">the corridor the slots leave free</text>
 
-  <!-- ===== CENTER-LEFT: digital core ===== -->
-  <rect x="380" y="270" width="140" height="140" class="blk"/>
-  <text x="390" y="294" class="lbl">10M50SAE144</text>
-  <text x="390" y="310" class="lbl">22x22 EQFP</text>
+  <!-- VGA ladder near rear strip -->
+  <rect x="390" y="198" width="140" height="40" class="blk"/>
+  <text x="394" y="226" class="lbl">VGA DAC ladder</text>
 
-  <rect x="540" y="286" width="100" height="56" class="blk"/>
-  <text x="546" y="308" class="lbl">SDRAM</text>
-  <text x="546" y="324" class="lbl">TSOP-54</text>
-
-  <rect x="540" y="356" width="66" height="34" class="blk"/>
-  <text x="546" y="378" class="lbl">50 MHz</text>
-
-  <rect x="380" y="196" width="150" height="48" class="blk"/>
-  <text x="388" y="216" class="lbl">VGA DAC ladder</text>
-  <text x="388" y="232" class="lbl">at the connector</text>
-
-  <rect x="640" y="150" width="106" height="76" class="blk"/>
-  <text x="648" y="170" class="lbl">DIP-4 modes</text>
-  <text x="648" y="186" class="lbl">RESET + NMI</text>
-  <text x="648" y="202" class="lbl">+ case-btn hdr</text>
-
-  <!-- ===== KEYBOARD TAIL SLOTS: MEASURED, FIXED ===== -->
-  <!-- B ("right one"): 27mm from right edge, 64mm from bottom -> x=184.5, ytop=66 -->
-  <!-- A ("left one"):  30mm from right edge, 57mm from bottom -> x=181.5, ytop=73 -->
-  <rect x="668" y="340" width="140" height="18" class="fix"/>
-  <line x1="808" y1="346" x2="808" y2="352" class="cross"/><line x1="805" y1="349" x2="811" y2="349" class="cross"/>
-  <text x="480" y="352" class="lblr">B: 27 fr right, 64 fr bottom</text>
-  <rect x="676" y="368" width="120" height="18" class="fix"/>
-  <line x1="796" y1="374" x2="796" y2="380" class="cross"/><line x1="793" y1="377" x2="799" y2="377" class="cross"/>
-  <text x="480" y="380" class="lblr">A: 30 fr right, 57 fr bottom</text>
-  <rect x="640" y="320" width="200" height="80" rx="8" class="keep"/>
-  <text x="646" y="416" class="lblr">KB tail slots -- FIXED (measured). Keep-out halo:</text>
-  <text x="646" y="432" class="lblr">tails drop in from above; no tall parts nearby.</text>
-  <text x="646" y="448" class="lblr">TO CONFIRM: point = center or end? widths? which is 5/8-way?</text>
-
-  <!-- Sinclair taps near matrix lines -->
-  <rect x="660" y="470" width="170" height="40" class="blk"/>
-  <text x="668" y="490" class="lbl">Sinclair joy tap pads</text>
-  <text x="668" y="504" class="lbl">(traces to rear DE-9 #2)</text>
-
-  <!-- decoupling -->
-  <rect x="380" y="430" width="240" height="36" class="quiet"/>
-  <text x="388" y="452" class="lbl">decoupling farm, pour stitching</text>
+  <!-- Sinclair taps near KB2 -->
+  <rect x="630" y="450" width="168" height="36" class="blk"/>
+  <text x="634" y="474" class="lbl">Sinclair joy taps -> rear DE-9</text>
 
   <!-- silkscreen -->
-  <rect x="90" y="480" width="240" height="90" class="quiet"/>
-  <text x="100" y="504" class="lbl">silkscreen: name, build log,</text>
-  <text x="100" y="520" class="lbl">(c) 2026 -- the empty quarter</text>
-  <text x="100" y="536" class="lbl">the ULA used to need</text>
+  <rect x="102" y="474" width="220" height="104" class="quiet"/>
+  <text x="110" y="506" class="lbl">silkscreen: build log,</text>
+  <text x="110" y="526" class="lbl">(c) 2026</text>
 
-  <!-- mounting holes: indicative, unmeasured -->
+  <!-- mounting holes: indicative -->
   <circle cx="96" cy="116" r="6" class="hole"/>
   <circle cx="890" cy="116" r="6" class="hole"/>
   <circle cx="96" cy="584" r="6" class="hole"/>
   <circle cx="890" cy="584" r="6" class="hole"/>
-  <circle cx="480" cy="500" r="6" class="hole"/>
-  <text x="70" y="668" class="note">o = mounting bosses: STILL UNMEASURED — need centers + count. KB slots drawn centered on the measured points; slot extents and 5/8-way identity to confirm. Rear strip positions free (modular panel).</text>
+  <circle cx="480" cy="560" r="6" class="hole"/>
+  <text x="70" y="668" class="note">o = bosses STILL UNMEASURED (need centers + count). Slot Y assumed = contact-row centerline; confirm. Rear strip free (modular panel).</text>
 </svg>
