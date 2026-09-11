@@ -21,6 +21,28 @@ orientation) get measured to the tenth of a millimetre and frozen first,
 before anything else is placed. Mounting bosses are the other fixed set;
 everything else on the board is negotiable.
 
+## Measured so far (the numbers that are now law)
+
+Frame: component side facing you, ports at top, keyboard edge at bottom.
+
+- Board outline: **211.5 x 130 mm** (measured; the folkloric 233 x 144
+  was wrong).
+- **KB1 (5-way)**: leftmost contact **30 mm from the LEFT edge,
+  57 mm from the bottom edge**.
+- **KB2 (8-way)**: rightmost contact **27 mm from the RIGHT edge,
+  64 mm from the bottom edge**.
+- The slots flank the board; the corridor between their inner ends
+  hosts the FPGA/SDRAM/oscillator (floorplan v0.4).
+- Confirmed against the case keyboard itself: underside photo shows the
+  8-way tail on the (mirrored) right, 5-way on the left, both tails
+  ~8 cm -- positions are dictated, as suspected. Tails are
+  FFC-with-stiffener ends: contact-face orientation per slot must be
+  captured before the footprints are drawn.
+
+Still to measure: mounting boss centers + count; socket slot lengths
+(drawn at an assumed 6.35 mm tail pitch); whether the Y figures are the
+contact-row centerline; rear wall envelope.
+
 ## Mechanical strategy: the Issue Two on the desk is the datum
 
 The board photographed in the case is the golden reference — better than
