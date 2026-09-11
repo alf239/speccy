@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 340" font-family="Helvetica,Arial,sans-serif">
+  <defs>
+    <style>
+      .wall  { fill:#3a3a3a; stroke:#222; stroke-width:2; }
+      .fixed { fill:#2a2a2a; stroke:#777; stroke-width:1.5; }
+      .cut   { fill:#f4f1e8; stroke:#ffd75e; stroke-width:2; }
+      .lbl   { fill:#ffe9a8; font-size:12px; }
+      .lbld  { fill:#333; font-size:12px; }
+      .title { fill:#222; font-size:17px; font-weight:bold; }
+      .note  { fill:#555; font-size:12px; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1060" height="340" fill="#f4f1e8"/>
+  <text x="30" y="32" class="title">rear panel elevation v0 — VIEWED FROM BEHIND the case (so board-left is on the right)</text>
+  <text x="30" y="52" class="note">Scale 4 px/mm. Wall ~233 x 22 mm envelope (VERIFY height). Modular panel re-printed around these cutouts.</text>
+
+  <!-- rear wall -->
+  <rect x="64" y="90" width="932" height="88" rx="6" class="wall"/>
+
+  <!-- fixed shell zones (approx, verify): DC hole far left-from-behind -->
+  <rect x="80" y="104" width="70" height="60" class="fixed"/>
+  <circle cx="115" cy="134" r="16" class="cut"/>
+  <text x="86" y="200" class="lbld">DC barrel</text>
+  <text x="86" y="216" class="lbld">5-12 V (shell hole,</text>
+  <text x="86" y="232" class="lbld">position fixed-ish)</text>
+
+  <!-- modular zone -->
+  <text x="180" y="84" class="note">|---------------- re-printable modular panel ----------------|</text>
+
+  <!-- JTAG slot -->
+  <rect x="180" y="112" width="66" height="26" class="cut"/>
+  <text x="178" y="200" class="lbld">JTAG slot</text>
+  <text x="178" y="216" class="lbld">(2x5 header</text>
+  <text x="178" y="232" class="lbld">recessed)</text>
+
+  <!-- microSD -->
+  <rect x="268" y="116" width="42" height="14" class="cut"/>
+  <text x="262" y="200" class="lbld">microSD</text>
+  <text x="262" y="216" class="lbld">push-push</text>
+
+  <!-- VGA -->
+  <rect x="340" y="104" width="122" height="52" rx="10" class="cut"/>
+  <text x="376" y="200" class="lbld">VGA DE-15</text>
+
+  <!-- two DE-9 -->
+  <rect x="492" y="106" width="92" height="46" rx="8" class="cut"/>
+  <text x="500" y="200" class="lbld">DE-9 Kempston</text>
+  <rect x="604" y="106" width="92" height="46" rx="8" class="cut"/>
+  <text x="612" y="200" class="lbld">DE-9 Sinclair</text>
+  <text x="612" y="216" class="lbld">(passive taps)</text>
+
+  <!-- reset pinhole -->
+  <circle cx="726" cy="130" r="5" class="cut"/>
+  <text x="712" y="200" class="lbld">RESET</text>
+  <text x="712" y="216" class="lbld">(pinhole)</text>
+
+  <!-- M E jacks: near-original -->
+  <rect x="762" y="108" width="100" height="48" class="fixed"/>
+  <circle cx="790" cy="132" r="10" class="cut"/>
+  <circle cx="832" cy="132" r="10" class="cut"/>
+  <text x="770" y="200" class="lbld">OUT      EAR</text>
+  <text x="770" y="216" class="lbld">(near original M/E)</text>
+
+  <!-- old TV hole: NMI button -->
+  <rect x="900" y="106" width="70" height="52" class="fixed"/>
+  <rect x="918" y="120" width="26" height="24" rx="6" class="cut"/>
+  <text x="898" y="200" class="lbld">old TV-out hole:</text>
+  <text x="898" y="216" class="lbld">the NMI button --</text>
+  <text x="898" y="232" class="lbld">games now enter where</text>
+  <text x="898" y="248" class="lbld">the picture used to leave</text>
+
+  <text x="64" y="300" class="note">Positions indicative; the rule is routing-friendly ordering (from board front view: audio left, VGA/SD/JTAG at FPGA, DC right) — final coordinates come out of KiCad placement.</text>
+</svg>

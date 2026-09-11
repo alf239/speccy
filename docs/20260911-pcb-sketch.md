@@ -6,6 +6,21 @@ carrier, go straight to 10M50SAE144 + PCBA) gets its first floorplan.*
 
 ![floorplan](img/pcb-floorplan.svg)
 
+![rear panel](img/pcb-rear-panel.svg)
+
+## The one immovable feature: the keyboard tail sockets
+
+With the rear panel confirmed re-printable, the constraint hierarchy
+inverts: **rear connectors go wherever routing likes** (the panel is
+printed around the board), while the **two keyboard tail sockets are the
+only components whose XY is dictated from outside** -- the case
+keyboard's membrane tails are short and stiff and arrive exactly where
+the Issue Two's slots are. The original PCB connectors are in hand and
+solder easily; their slot centers (and the tails' insertion depth and
+orientation) get measured to the tenth of a millimetre and frozen first,
+before anything else is placed. Mounting bosses are the other fixed set;
+everything else on the board is negotiable.
+
 ## Mechanical strategy: the Issue Two on the desk is the datum
 
 The board photographed in the case is the golden reference — better than
@@ -19,8 +34,9 @@ any repo. Everything positional gets **measured off it with calipers**:
    membrane tails arrive exactly there.
 4. DC jack center on the rear edge (we reuse the case aperture).
 5. EAR/MIC jack centers (reused as line-out + future EAR-in).
-6. Edge-connector aperture extents — our rear connector strip must fit
-   inside the case's opening (or its replaceable rear panel).
+6. Rear wall envelope: openable span and height of the modular panel
+   region (the panel itself is re-printed around our connectors, so
+   only the envelope matters -- confirmed modular 2026-09-11).
 
 Cross-checks available online: the Harlequin rev G / Superfo 128
 (case-fit clone) and the issue-6A restoration replica, both published;

@@ -4,6 +4,7 @@
       .board { fill:#0b3d0b; stroke:#333; stroke-width:2; }
       .blk   { fill:#1e6f1e; stroke:#cfe8cf; stroke-width:1.5; }
       .conn  { fill:#8a6d1a; stroke:#ffe08a; stroke-width:1.5; }
+      .fix   { fill:#7a1f1f; stroke:#ff9d9d; stroke-width:2.5; }
       .quiet { fill:#14501e; stroke:#9fd7a9; stroke-width:1; stroke-dasharray:5 4; }
       .hole  { fill:#ddd; stroke:#666; stroke-width:1.5; }
       .lbl   { fill:#f0f0f0; font-size:13px; }
@@ -90,12 +91,14 @@
   <text x="480" y="464" class="lbl">decoupling farm + 3.3V pour under FPGA/SDRAM</text>
 
   <!-- ===== FRONT EDGE (bottom): keyboard ===== -->
-  <rect x="230" y="580" width="110" height="60" class="conn"/>
-  <text x="236" y="604" class="lbl2">KB tail 5-way</text>
-  <text x="236" y="620" class="lbl2">(orig socket, orig pos)</text>
-  <rect x="360" y="580" width="130" height="60" class="conn"/>
-  <text x="366" y="604" class="lbl2">KB tail 8-way</text>
-  <text x="366" y="620" class="lbl2">(orig socket, orig pos)</text>
+  <rect x="210" y="540" width="120" height="70" class="fix"/>
+  <text x="218" y="564" class="lbl">KB1 tail 5-way</text>
+  <text x="218" y="580" class="lbl">FIXED POSITION</text>
+  <text x="218" y="596" class="lbl">orig socket, measure exact</text>
+  <rect x="350" y="540" width="140" height="70" class="fix"/>
+  <text x="358" y="564" class="lbl">KB2 tail 8-way</text>
+  <text x="358" y="580" class="lbl">FIXED POSITION</text>
+  <text x="358" y="596" class="lbl">orig socket, measure exact</text>
 
   <!-- Sinclair joystick 2: passive taps near the matrix lines -->
   <rect x="530" y="560" width="150" height="50" class="blk"/>
@@ -113,5 +116,5 @@
   <circle cx="90" cy="630" r="7" class="hole"/>
   <circle cx="970" cy="630" r="7" class="hole"/>
   <circle cx="530" cy="480" r="7" class="hole"/>
-  <text x="60" y="700" class="note">o = mounting bosses — copy EXACT centers from the Issue Two with calipers (count them too; issues vary). Connector strip assumes the case's replaceable/openable rear panel.</text>
+  <text x="60" y="700" class="note">o = mounting bosses -- copy EXACT centers from the Issue Two/case bottom. Rear connector positions are FREE: the case rear panel is a modular re-printable piece (see pcb-rear-panel.svg).</text>
 </svg>
