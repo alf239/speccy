@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="211.5mm" height="130.0mm" viewBox="0 0 211.5 130.0" font-family="Helvetica,Arial,sans-serif">
+  <style>
+    .real circle { fill:none; stroke:#000; stroke-width:0.3; }
+    .real line   { stroke:#000; stroke-width:0.15; }
+    .real text   { font-size:2.6px; fill:#000; }
+    .legacy circle { fill:none; stroke:#888; stroke-width:0.3; stroke-dasharray:1 1; }
+    .legacy line { stroke:#888; stroke-width:0.15; }
+    .legacy text { font-size:2.6px; fill:#888; }
+    .slot rect   { fill:none; stroke:#a00; stroke-width:0.3; }
+    .slot line   { stroke:#a00; stroke-width:0.15; }
+    .slot text   { font-size:2.6px; fill:#a00; }
+    .edge        { fill:none; stroke:#000; stroke-width:0.4; }
+    .meta        { font-size:3.2px; fill:#000; }
+    .bar         { stroke:#000; stroke-width:0.5; }
+  </style>
+  <rect x="0" y="0" width="211.5" height="130.0" class="edge"/>
+  <g class="real">
+    <circle cx="5" cy="44.5" r="2.0" />
+    <line x1="1.0" y1="44.5" x2="9.0" y2="44.5" />
+    <line x1="5" y1="40.5" x2="5" y2="48.5" />
+    <text x="9.5" y="45.7">4.0 side-L</text>
+  </g>
+  <g class="real">
+    <circle cx="206.5" cy="44.5" r="2.0" />
+    <line x1="202.5" y1="44.5" x2="210.5" y2="44.5" />
+    <line x1="206.5" y1="40.5" x2="206.5" y2="48.5" />
+    <text x="211.0" y="45.7">4.0 side-R</text>
+  </g>
+  <g class="real">
+    <circle cx="4.75" cy="125.25" r="2.0" />
+    <line x1="0.75" y1="125.25" x2="8.75" y2="125.25" />
+    <line x1="4.75" y1="121.25" x2="4.75" y2="129.25" />
+    <text x="9.25" y="126.45">4.0 BL</text>
+  </g>
+  <g class="real">
+    <circle cx="206.75" cy="125.25" r="2.0" />
+    <line x1="202.75" y1="125.25" x2="210.75" y2="125.25" />
+    <line x1="206.75" y1="121.25" x2="206.75" y2="129.25" />
+    <text x="211.25" y="126.45">4.0 BR</text>
+  </g>
+  <g class="real">
+    <circle cx="105.75" cy="90.0" r="1.0" />
+    <line x1="102.75" y1="90.0" x2="108.75" y2="90.0" />
+    <line x1="105.75" y1="87.0" x2="105.75" y2="93.0" />
+    <text x="109.25" y="91.2">2.0 centre (X assumed)</text>
+  </g>
+  <g class="real">
+    <circle cx="105.75" cy="5.0" r="1.5" />
+    <line x1="102.25" y1="5.0" x2="109.25" y2="5.0" />
+    <line x1="105.75" y1="1.5" x2="105.75" y2="8.5" />
+    <text x="109.75" y="6.2">3.0 bolt (X assumed)</text>
+  </g>
+  <g class="legacy">
+    <circle cx="12" cy="6" r="1.75" />
+    <line x1="8.25" y1="6" x2="15.75" y2="6" />
+    <line x1="12" y1="2.25" x2="12" y2="9.75" />
+    <text x="16.25" y="7.2">legacy</text>
+  </g>
+  <g class="legacy">
+    <circle cx="197.5" cy="6.5" r="1.75" />
+    <line x1="193.75" y1="6.5" x2="201.25" y2="6.5" />
+    <line x1="197.5" y1="2.75" x2="197.5" y2="10.25" />
+    <text x="201.75" y="7.7">legacy</text>
+  </g>
+  <g class="slot">
+    <rect x="27.0" y="70.5" width="16.159999999999997" height="5" />
+    <line x1="30.0" y1="69" x2="30.0" y2="77" /><line x1="32.54" y1="69" x2="32.54" y2="77" /><line x1="35.08" y1="69" x2="35.08" y2="77" /><line x1="37.62" y1="69" x2="37.62" y2="77" /><line x1="40.16" y1="69" x2="40.16" y2="77" />
+    <text x="27.0" y="82">KB1 5-way, contacts UP, anchor 30.0 fr left</text>
+  </g>
+  <g class="slot">
+    <rect x="163.72" y="63.5" width="23.78" height="5" />
+    <line x1="184.5" y1="62" x2="184.5" y2="70" /><line x1="181.96" y1="62" x2="181.96" y2="70" /><line x1="179.42" y1="62" x2="179.42" y2="70" /><line x1="176.88" y1="62" x2="176.88" y2="70" /><line x1="174.34" y1="62" x2="174.34" y2="70" /><line x1="171.8" y1="62" x2="171.8" y2="70" /><line x1="169.26" y1="62" x2="169.26" y2="70" /><line x1="166.72" y1="62" x2="166.72" y2="70" />
+    <text x="163.72" y="75">KB2 8-way, contacts DOWN, anchor 27.0 fr right</text>
+  </g>
+  <text x="60" y="26" class="meta">speccy board 1:1 template v0.9 — outline 211.5 x 130. PRINT AT 100%,</text>
+  <text x="60" y="31" class="meta">verify the 50 mm bar below with calipers before trusting anything.</text>
+  <line x1="60" y1="36" x2="110" y2="36" class="bar"/>
+  <line x1="60" y1="34" x2="60" y2="38" class="bar"/>
+  <line x1="110" y1="34" x2="110" y2="38" class="bar"/>
+  <text x="112" y="37.5" class="meta">50 mm</text>
+  <text x="60" y="112" class="meta">ports edge = top. Slot ticks drawn at 2.54 mm pitch — lay the real socket on</text>
+  <text x="60" y="117" class="meta">the ticks: drift over 8 pins means metric 2.50 (caliper span settles it).</text>
+</svg>
