@@ -91,14 +91,15 @@
   <text x="480" y="464" class="lbl">decoupling farm + 3.3V pour under FPGA/SDRAM</text>
 
   <!-- ===== FRONT EDGE (bottom): keyboard ===== -->
-  <rect x="210" y="540" width="120" height="70" class="fix"/>
-  <text x="218" y="564" class="lbl">KB1 tail 5-way</text>
-  <text x="218" y="580" class="lbl">FIXED POSITION</text>
-  <text x="218" y="596" class="lbl">orig socket, measure exact</text>
-  <rect x="350" y="540" width="140" height="70" class="fix"/>
-  <text x="358" y="564" class="lbl">KB2 tail 8-way</text>
-  <text x="358" y="580" class="lbl">FIXED POSITION</text>
-  <text x="358" y="596" class="lbl">orig socket, measure exact</text>
+  <!-- staggered per Issue 2: 8-way at the front edge, 5-way inboard behind it -->
+  <rect x="180" y="596" width="160" height="44" class="fix"/>
+  <text x="188" y="616" class="lbl">KB2 tail 8-way -- front edge</text>
+  <text x="188" y="632" class="lbl">FIXED: measure exact</text>
+  <rect x="160" y="500" width="150" height="44" class="fix"/>
+  <text x="168" y="520" class="lbl">KB1 tail 5-way -- inboard</text>
+  <text x="168" y="536" class="lbl">FIXED: measure exact</text>
+  <text x="180" y="576" class="lbl2">(staggered pair, front-left -- Issue 2 geometry;</text>
+  <text x="180" y="590" class="lbl2">rectangles indicative until the caliper session)</text>
 
   <!-- Sinclair joystick 2: passive taps near the matrix lines -->
   <rect x="530" y="560" width="150" height="50" class="blk"/>
