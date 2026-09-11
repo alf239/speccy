@@ -85,11 +85,21 @@
   <text x="110" y="506" class="lbl">silkscreen: build log,</text>
   <text x="110" y="526" class="lbl">(c) 2026</text>
 
-  <!-- mounting holes: indicative -->
-  <circle cx="96" cy="116" r="6" class="hole"/>
-  <circle cx="890" cy="116" r="6" class="hole"/>
-  <circle cx="96" cy="584" r="6" class="hole"/>
-  <circle cx="890" cy="584" r="6" class="hole"/>
-  <circle cx="480" cy="560" r="6" class="hole"/>
-  <text x="70" y="668" class="note">o = bosses STILL UNMEASURED (need centers + count). Slot Y assumed = contact-row centerline; confirm. Rear strip free (modular panel).</text>
+  <!-- mounting holes: MEASURED -->
+  <!-- centre board-holding hole: dia 2mm, X centre (assumed 105.75 -- confirm), 40mm from bottom -->
+  <circle cx="493" cy="450" r="4" class="hole"/>
+  <circle cx="493" cy="450" r="12" class="keep"/>
+  <text x="505" y="446" class="lbl">hole 2mm dia: board mount,</text>
+  <text x="505" y="462" class="lbl">centre(?), 40 fr bottom -- MEASURED</text>
+  <!-- top pass-through for case bolt: dia 3mm, 5mm from top edge -->
+  <circle cx="493" cy="110" r="6" class="hole"/>
+  <circle cx="493" cy="110" r="14" class="keep"/>
+  <text x="505" y="106" class="lbl">hole 3mm dia: case bolt pass-through,</text>
+  <text x="505" y="122" class="lbl">centre(?), 5 fr top -- MEASURED</text>
+  <!-- corners: my earlier invention -- do these exist? -->
+  <circle cx="96" cy="116" r="6" class="keep"/>
+  <circle cx="890" cy="116" r="6" class="keep"/>
+  <circle cx="96" cy="584" r="6" class="keep"/>
+  <circle cx="890" cy="584" r="6" class="keep"/>
+  <text x="70" y="668" class="note">Solid holes = measured (2mm mount @ 40 fr bottom; 3mm bolt pass @ 5 fr top; X assumed centred -- confirm). Dashed corners = UNCONFIRMED, do they exist? Keep-out rings: case hardware clearance. Slot Y assumed contact-row centreline.</text>
 </svg>
