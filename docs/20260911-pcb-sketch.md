@@ -47,11 +47,13 @@ Frame: component side facing you, ports at top, keyboard edge at bottom.
   mid-sides, 5 mm in from each side edge, 44.5 mm from the top edge
   to centre** (the case's main fixings, symmetric); a 2 mm board-mount
   at centre, 40 mm from the bottom; a 3 mm case-bolt pass-through 5 mm
-  from the top (non-plated, mask-free, all-layer keep-out). The
-  top-corner holes near the modulator and the barrel exist on the
+  from the top (non-plated, mask-free, all-layer keep-out). Two more
+  4 mm holes at the bottom corners, 4.5-5 mm from both closest edges.
+  The top-corner holes near the modulator and the barrel exist on the
   Issue Two but are UNUSED by this case -- carried as optional legacy
-  holes for compatibility, nothing routed near them. No bottom
-  fixings.
+  holes for compatibility, nothing routed near them. Hole census:
+  seven real (2x4mm sides, 2x4mm bottom corners, 2mm centre, 3mm top
+  bolt pass) plus two legacy.
 
 Still to measure: X of the centre hole and top bolt (assumed centred);
 the pitch tiebreak spans above; rear wall envelope.

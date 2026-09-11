@@ -103,10 +103,17 @@
   <circle cx="896" cy="268" r="8" class="hole"/>
   <circle cx="896" cy="268" r="18" class="keep"/>
   <text x="676" y="264" class="lbl">4mm USED: (206.5, 44.5 fr top)</text>
+  <!-- bottom corner holes: 4mm, ~4.75mm from both closest edges (measured) -->
+  <circle cx="89" cy="591" r="8" class="hole"/>
+  <circle cx="89" cy="591" r="18" class="keep"/>
+  <text x="112" y="596" class="lbl">4mm: ~4.75 fr left+bottom</text>
+  <circle cx="897" cy="591" r="8" class="hole"/>
+  <circle cx="897" cy="591" r="18" class="keep"/>
+  <text x="700" y="596" class="lbl">4mm: ~4.75 fr right+bottom</text>
   <!-- legacy holes, unused by this case -->
   <circle cx="118" cy="114" r="6" class="keep"/>
   <text x="130" y="134" class="lbl">legacy, unused</text>
   <circle cx="860" cy="116" r="6" class="keep"/>
   <text x="750" y="140" class="lbl">legacy, unused</text>
-  <text x="70" y="668" class="note">USED fixings (solid): 2x 4mm side holes (5mm fr side edges, 44.5 fr top); 2mm centre mount (40 fr bottom); 3mm top bolt pass (5 fr top). X of centre pair still assumed centred. Dashed = legacy/unused. No bottom fixings.</text>
+  <text x="70" y="668" class="note">Hole census complete: 2x 4mm sides (5 fr edges, 44.5 fr top, USED); 2x 4mm bottom corners (~4.75 fr both edges); 2mm centre (40 fr bottom); 3mm top bolt pass (5 fr top). X of centre pair assumed centred. Dashed top corners = legacy/unused.</text>
 </svg>
