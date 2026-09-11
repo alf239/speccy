@@ -103,6 +103,10 @@
   <circle cx="896" cy="268" r="8" class="hole"/>
   <circle cx="896" cy="268" r="18" class="keep"/>
   <text x="676" y="264" class="lbl">4mm USED: (206.5, 44.5 fr top)</text>
+  <!-- speaker sound hole: photo-estimated, front-right -->
+  <circle cx="830" cy="536" r="20" class="hole"/>
+  <text x="700" y="510" class="lbl">speaker hole ~10mm dia</text>
+  <text x="700" y="524" class="lbl">~(190, 18.5 fr bottom) PHOTO-EST</text>
   <!-- bottom corner holes: 4mm, ~4.75mm from both closest edges (measured) -->
   <circle cx="89" cy="591" r="8" class="hole"/>
   <circle cx="89" cy="591" r="18" class="keep"/>

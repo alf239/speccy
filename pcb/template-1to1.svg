@@ -78,6 +78,12 @@
   <line x1="60" y1="34" x2="60" y2="38" class="bar"/>
   <line x1="110" y1="34" x2="110" y2="38" class="bar"/>
   <text x="112" y="37.5" class="meta">50 mm</text>
+  <g class="real">
+    <circle cx="190" cy="111.5" r="5" />
+    <line x1="183" y1="111.5" x2="197" y2="111.5" />
+    <line x1="190" y1="104.5" x2="190" y2="118.5" />
+    <text x="160" y="103">speaker hole ~10 dia PHOTO-EST: confirm centre+dia</text>
+  </g>
   <text x="60" y="112" class="meta">ports edge = top. Slot ticks drawn at 2.54 mm pitch — lay the real socket on</text>
   <text x="60" y="117" class="meta">the ticks: drift over 8 pins means metric 2.50 (caliper span settles it).</text>
 </svg>
