@@ -43,13 +43,18 @@ Frame: component side facing you, ports at top, keyboard edge at bottom.
   the 8-way's on the BOTTOM (as the user holds it, ports-up frame).
   The two tails insert printed-face opposite ways -- footprint
   orientation per slot is now recorded and must be honoured.
-- Mounting (measured): 2 mm board-mount hole at centre, 40 mm from the
-  bottom edge; 3 mm case-bolt pass-through 5 mm from the top edge
-  (non-plated, mask-free, all-layer keep-out under the bolt head).
-  No bottom-centre boss; corner supports unconfirmed.
+- Mounting, the full used set (measured): **two 4 mm holes at
+  mid-sides, 5 mm in from each side edge, 44.5 mm from the top edge
+  to centre** (the case's main fixings, symmetric); a 2 mm board-mount
+  at centre, 40 mm from the bottom; a 3 mm case-bolt pass-through 5 mm
+  from the top (non-plated, mask-free, all-layer keep-out). The
+  top-corner holes near the modulator and the barrel exist on the
+  Issue Two but are UNUSED by this case -- carried as optional legacy
+  holes for compatibility, nothing routed near them. No bottom
+  fixings.
 
-Still to measure: X of both holes (assumed centred); corner-support
-question; the pitch tiebreak spans above; rear wall envelope.
+Still to measure: X of the centre hole and top bolt (assumed centred);
+the pitch tiebreak spans above; rear wall envelope.
 
 ## Mechanical strategy: the Issue Two on the desk is the datum
 
