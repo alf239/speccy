@@ -35,13 +35,21 @@ Frame: component side facing you, ports at top, keyboard edge at bottom.
   hosts the FPGA/SDRAM/oscillator (floorplan v0.4).
 - Confirmed against the case keyboard itself: underside photo shows the
   8-way tail on the (mirrored) right, 5-way on the left, both tails
-  ~8 cm -- positions are dictated, as suspected. Tails are
-  FFC-with-stiffener ends: contact-face orientation per slot must be
-  captured before the footprints are drawn.
+  ~8 cm -- positions are dictated, as suspected.
+- **Contact pitch ~2.5 mm** (macro photo against a steel ruler: 4 joints
+  per cm). To settle 2.54 vs 2.50: caliper the first-to-last contact
+  span -- 5-way: 10.16 vs 10.00 mm; 8-way: 17.78 vs 17.50 mm.
+- **Contact faces oppose**: the 5-way socket's contacts are on the TOP,
+  the 8-way's on the BOTTOM (as the user holds it, ports-up frame).
+  The two tails insert printed-face opposite ways -- footprint
+  orientation per slot is now recorded and must be honoured.
+- Mounting (measured): 2 mm board-mount hole at centre, 40 mm from the
+  bottom edge; 3 mm case-bolt pass-through 5 mm from the top edge
+  (non-plated, mask-free, all-layer keep-out under the bolt head).
+  No bottom-centre boss; corner supports unconfirmed.
 
-Still to measure: mounting boss centers + count; socket slot lengths
-(drawn at an assumed 6.35 mm tail pitch); whether the Y figures are the
-contact-row centerline; rear wall envelope.
+Still to measure: X of both holes (assumed centred); corner-support
+question; the pitch tiebreak spans above; rear wall envelope.
 
 ## Mechanical strategy: the Issue Two on the desk is the datum
 
