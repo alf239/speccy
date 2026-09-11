@@ -109,7 +109,9 @@ def gen_floorplan(path):
     parts = []
     # rear edge
     parts.append(blk(17.5, H-0.5, 30, 12, "conn", ["2x 3.5mm jacks", "line-out + EAR-in"]))
-    parts.append(blk(55, H-0.5, 68, 14, "conn", ["rear strip (re-printable panel):", "VGA | 2x DE-9 | microSD | JTAG"]))
+    # rear strip parts around the top bolt-pass at W/2 (keep 103-110.5 clear)
+    parts.append(blk(55, H-0.5, 47, 14, "conn", ["rear strip A:", "VGA | microSD"]))
+    parts.append(blk(111.5, H-0.5, 37, 14, "conn", ["rear strip B:", "2x DE-9 | JTAG"]))
     parts.append(blk(W-23.5, H-0.5, 20, 12, "conn", ["DC 5-12V", "barrel"]))
     parts.append(blk(W-40, H-15.5, 37, 18, "blk", ["POWER: wide-in buck", "3.3V/2A + protection", "(1982-PSU-proof)"]))
     parts.append(blk(W-63, H-15.5, 21, 18, "blk", ["DIP-4 modes", "RESET + NMI", "case-btn hdr"]))
@@ -117,7 +119,7 @@ def gen_floorplan(path):
     # core corridor
     parts.append(blk(72, 53, 25, 25, "blk", ["10M50SAE144", "22x22 EQFP"]))
     parts.append(blk(100, 63, 23, 11, "blk", ["SDRAM TSOP-54"]))
-    parts.append(blk(100, 48, 14, 8, "blk", ["50MHz"]))
+    parts.append(blk(56, 66, 14, 8, "blk", ["50MHz"]))  # was on the centre mount screw -- paper test catch
     parts.append(blk(80, 92.5, 35, 10, "blk", ["VGA DAC ladder"]))
     parts.append(blk(140, 31, 42, 9, "blk", ["Sinclair joy taps -> rear DE-9"]))
     parts.append(blk(8, 24, 55, 20, "quiet", ["silkscreen: build log, (c) 2026"]))

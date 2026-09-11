@@ -24,9 +24,12 @@
   <rect x="140" y="92" width="120" height="48" class="conn"/>
   <text x="148" y="112" class="lbl2">2x 3.5mm jacks</text>
   <text x="148" y="128" class="lbl2">line-out + EAR-in</text>
-  <rect x="290" y="92" width="272" height="56" class="conn"/>
-  <text x="298" y="112" class="lbl2">rear strip (re-printable panel):</text>
-  <text x="298" y="128" class="lbl2">VGA | 2x DE-9 | microSD | JTAG</text>
+  <rect x="290" y="92" width="188" height="56" class="conn"/>
+  <text x="298" y="112" class="lbl2">rear strip A:</text>
+  <text x="298" y="128" class="lbl2">VGA | microSD</text>
+  <rect x="516" y="92" width="148" height="56" class="conn"/>
+  <text x="524" y="112" class="lbl2">rear strip B:</text>
+  <text x="524" y="128" class="lbl2">2x DE-9 | JTAG</text>
   <rect x="830" y="92" width="80" height="48" class="conn"/>
   <text x="838" y="112" class="lbl2">DC 5-12V</text>
   <text x="838" y="128" class="lbl2">barrel</text>
@@ -47,8 +50,8 @@
   <text x="366" y="434" class="lbl">22x22 EQFP</text>
   <rect x="470" y="358" width="92" height="44" class="blk"/>
   <text x="478" y="378" class="lbl">SDRAM TSOP-54</text>
-  <rect x="470" y="418" width="56" height="32" class="blk"/>
-  <text x="478" y="438" class="lbl">50MHz</text>
+  <rect x="294" y="346" width="56" height="32" class="blk"/>
+  <text x="302" y="366" class="lbl">50MHz</text>
   <rect x="390" y="240" width="140" height="40" class="blk"/>
   <text x="398" y="260" class="lbl">VGA DAC ladder</text>
   <rect x="630" y="486" width="168" height="36" class="blk"/>
