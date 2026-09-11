@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 720" font-family="Helvetica,Arial,sans-serif">
+  <defs>
+    <style>
+      .board { fill:#0b3d0b; stroke:#333; stroke-width:2; }
+      .blk   { fill:#1e6f1e; stroke:#cfe8cf; stroke-width:1.5; }
+      .conn  { fill:#8a6d1a; stroke:#ffe08a; stroke-width:1.5; }
+      .quiet { fill:#14501e; stroke:#9fd7a9; stroke-width:1; stroke-dasharray:5 4; }
+      .hole  { fill:#ddd; stroke:#666; stroke-width:1.5; }
+      .lbl   { fill:#f0f0f0; font-size:13px; }
+      .lbl2  { fill:#ffe9a8; font-size:12px; }
+      .dim   { fill:#bbb; font-size:12px; }
+      .title { fill:#222; font-size:18px; font-weight:bold; }
+      .note  { fill:#555; font-size:12px; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1060" height="720" fill="#f4f1e8"/>
+  <text x="30" y="34" class="title">speccy carrier-less board — floorplan sketch v0 (ZX 48K issue outline, ~233 x 144 mm)</text>
+  <text x="30" y="54" class="note">Scale 4 px/mm. Rear edge at top, keyboard edge at bottom — as the Issue Two sits in the case.</text>
+
+  <!-- board outline: 233x144mm at 4px/mm = 932x576, origin (64,80) -->
+  <rect x="64" y="80" width="932" height="576" rx="8" class="board"/>
+
+  <!-- dimension arrows -->
+  <text x="480" y="676" class="dim">233 mm (VERIFY with calipers on the Issue Two)</text>
+  <text x="8" y="380" class="dim" transform="rotate(-90 18 380)">144 mm (VERIFY)</text>
+
+  <!-- ===== REAR EDGE (top) ===== -->
+  <!-- old EAR/MIC jack positions: reuse -->
+  <rect x="270" y="84" width="120" height="52" class="conn"/>
+  <text x="278" y="106" class="lbl2">2x 3.5mm (orig EAR/MIC holes)</text>
+  <text x="278" y="122" class="lbl2">line-out + EAR-in (phase 2)</text>
+
+  <!-- rear panel strip: where the expansion aperture was -->
+  <rect x="430" y="84" width="180" height="60" class="conn"/>
+  <text x="440" y="106" class="lbl2">VGA DE-15 (rear panel)</text>
+  <rect x="620" y="84" width="90" height="60" class="conn"/>
+  <text x="626" y="106" class="lbl2">2x DE-9</text>
+  <text x="626" y="122" class="lbl2">Kempston + Sinclair</text>
+  <rect x="718" y="84" width="60" height="46" class="conn"/>
+  <text x="722" y="106" class="lbl2">microSD</text>
+  <text x="722" y="120" class="lbl2">push-push</text>
+  <rect x="786" y="84" width="66" height="46" class="conn"/>
+  <text x="790" y="106" class="lbl2">JTAG</text>
+  <text x="790" y="120" class="lbl2">2x5 hdr</text>
+
+  <!-- DC in at original power jack corner -->
+  <rect x="900" y="84" width="88" height="52" class="conn"/>
+  <text x="906" y="106" class="lbl2">DC barrel 5-12V</text>
+  <text x="906" y="122" class="lbl2">(orig 9V hole)</text>
+
+  <!-- power section next to entry -->
+  <rect x="860" y="150" width="128" height="90" class="blk"/>
+  <text x="868" y="172" class="lbl">POWER</text>
+  <text x="868" y="190" class="lbl">wide-in buck -&gt; 3.3V/2A</text>
+  <text x="868" y="206" class="lbl">polyfuse + reverse prot</text>
+  <text x="868" y="222" class="lbl">(survives the 1982 PSU)</text>
+
+  <!-- modulator bay: audio + EAR conditioning, quiet analog corner -->
+  <rect x="80" y="92" width="170" height="130" class="quiet"/>
+  <text x="90" y="114" class="lbl">MODULATOR BAY (RIP)</text>
+  <text x="90" y="132" class="lbl">audio RC filter + line drv</text>
+  <text x="90" y="148" class="lbl">EAR-in divider/schmitt</text>
+  <text x="90" y="164" class="lbl">quiet analog corner</text>
+
+  <!-- ===== CENTER: digital core ===== -->
+  <rect x="470" y="270" width="150" height="150" class="blk"/>
+  <text x="482" y="296" class="lbl">10M50SAE144</text>
+  <text x="482" y="314" class="lbl">EQFP-144 22x22</text>
+  <text x="482" y="332" class="lbl">(the machine)</text>
+
+  <rect x="640" y="290" width="110" height="60" class="blk"/>
+  <text x="648" y="312" class="lbl">SDRAM</text>
+  <text x="648" y="328" class="lbl">W9825G6KH TSOP-54</text>
+
+  <rect x="640" y="366" width="70" height="36" class="blk"/>
+  <text x="646" y="388" class="lbl">50 MHz</text>
+
+  <rect x="470" y="200" width="140" height="50" class="blk"/>
+  <text x="478" y="222" class="lbl">VGA DAC ladder</text>
+  <text x="478" y="238" class="lbl">14 x R, near conn</text>
+
+  <rect x="770" y="290" width="110" height="90" class="blk"/>
+  <text x="778" y="312" class="lbl">DIP-4 modes +</text>
+  <text x="778" y="328" class="lbl">RESET / NMI btns</text>
+  <text x="778" y="344" class="lbl">+ header for case-</text>
+  <text x="778" y="360" class="lbl">top NMI button</text>
+
+  <!-- decoupling note -->
+  <rect x="470" y="440" width="280" height="40" class="quiet"/>
+  <text x="480" y="464" class="lbl">decoupling farm + 3.3V pour under FPGA/SDRAM</text>
+
+  <!-- ===== FRONT EDGE (bottom): keyboard ===== -->
+  <rect x="230" y="580" width="110" height="60" class="conn"/>
+  <text x="236" y="604" class="lbl2">KB tail 5-way</text>
+  <text x="236" y="620" class="lbl2">(orig socket, orig pos)</text>
+  <rect x="360" y="580" width="130" height="60" class="conn"/>
+  <text x="366" y="604" class="lbl2">KB tail 8-way</text>
+  <text x="366" y="620" class="lbl2">(orig socket, orig pos)</text>
+
+  <!-- Sinclair joystick 2: passive taps near the matrix lines -->
+  <rect x="530" y="560" width="150" height="50" class="blk"/>
+  <text x="538" y="582" class="lbl">Sinclair joy tap pads</text>
+  <text x="538" y="598" class="lbl">(traces to rear DE-9 #2)</text>
+
+  <!-- front-right: silkscreen -->
+  <rect x="760" y="560" width="200" height="60" class="quiet"/>
+  <text x="770" y="586" class="lbl">silkscreen: name, log of</text>
+  <text x="770" y="602" class="lbl">the build, (c) 2026</text>
+
+  <!-- mounting holes: indicative -->
+  <circle cx="90" cy="106" r="7" class="hole"/>
+  <circle cx="970" cy="106" r="7" class="hole"/>
+  <circle cx="90" cy="630" r="7" class="hole"/>
+  <circle cx="970" cy="630" r="7" class="hole"/>
+  <circle cx="530" cy="480" r="7" class="hole"/>
+  <text x="60" y="700" class="note">o = mounting bosses — copy EXACT centers from the Issue Two with calipers (count them too; issues vary). Connector strip assumes the case's replaceable/openable rear panel.</text>
+</svg>
