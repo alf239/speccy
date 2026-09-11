@@ -69,9 +69,9 @@
     <text x="147.00" y="109.50">speaker hole ~10.0 dia PHOTO-EST: confirm</text>
   </g>
   <g class="slot">
-    <rect x="27.00" y="70.50" width="16.16" height="5" />
-    <line x1="30.00" y1="69.00" x2="30.00" y2="77.00" /><line x1="32.54" y1="69.00" x2="32.54" y2="77.00" /><line x1="35.08" y1="69.00" x2="35.08" y2="77.00" /><line x1="37.62" y1="69.00" x2="37.62" y2="77.00" /><line x1="40.16" y1="69.00" x2="40.16" y2="77.00" />
-    <text x="27.00" y="82.00">KB1 5-way, contacts UP, leftmost contact 30.0 fr left</text>
+    <rect x="27.00" y="71.50" width="16.16" height="5" />
+    <line x1="30.00" y1="70.00" x2="30.00" y2="78.00" /><line x1="32.54" y1="70.00" x2="32.54" y2="78.00" /><line x1="35.08" y1="70.00" x2="35.08" y2="78.00" /><line x1="37.62" y1="70.00" x2="37.62" y2="78.00" /><line x1="40.16" y1="70.00" x2="40.16" y2="78.00" />
+    <text x="27.00" y="83.00">KB1 5-way, contacts UP, leftmost contact 30.0 fr left</text>
   </g>
   <g class="slot">
     <rect x="165.72" y="63.50" width="23.78" height="5" />

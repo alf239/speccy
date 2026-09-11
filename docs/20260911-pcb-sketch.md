@@ -28,7 +28,8 @@ Frame: component side facing you, ports at top, keyboard edge at bottom.
 - Board outline: **211.5 x 130 mm** (measured; the folkloric 233 x 144
   was wrong).
 - **KB1 (5-way)**: leftmost contact **30 mm from the LEFT edge,
-  57 mm from the bottom edge**.
+  56 mm from the bottom edge** (57 revised down 1 mm after the 1:1
+  print against the solder side).
 - **KB2 (8-way)**: rightmost contact **27 mm from the RIGHT edge,
   64 mm from the bottom edge**.
 - The slots flank the board; the corridor between their inner ends

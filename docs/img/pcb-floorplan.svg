@@ -62,13 +62,13 @@
   <text x="366" y="558" class="lbl">decoupling farm everywhere</text>
   <circle cx="838" cy="560" r="20" class="hole"/>
   <text x="698" y="534" class="lbl">speaker hole ~10.0mm + driver PHOTO-EST</text>
-  <rect x="178" y="372" width="65" height="20" class="fix"/>
-  <line x1="190" y1="368" x2="190" y2="396" class="cross"/>
-  <rect x="166" y="358" width="89" height="52" class="keep"/>
+  <rect x="178" y="376" width="65" height="20" class="fix"/>
+  <line x1="190" y1="372" x2="190" y2="400" class="cross"/>
+  <rect x="166" y="362" width="89" height="52" class="keep"/>
   <rect x="733" y="344" width="95" height="20" class="fix"/>
   <line x1="816" y1="340" x2="816" y2="368" class="cross"/>
   <rect x="721" y="330" width="119" height="52" class="keep"/>
-  <text x="150" y="416" class="lblr">KB1 5-way (contacts UP): leftmost contact 30 fr left, 57 fr bottom</text>
+  <text x="150" y="420" class="lblr">KB1 5-way (contacts UP): leftmost contact 30 fr left, 56 fr bottom</text>
   <text x="550" y="324" class="lblr">KB2 8-way (contacts DOWN): rightmost 27 fr right, 64 fr bottom</text>
   <circle cx="90" cy="268" r="8" class="hole"/>
   <circle cx="90" cy="268" r="18" class="keep"/>

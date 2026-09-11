@@ -26,7 +26,7 @@ HOLES = [
 
 SPEAKER = (W-21.5, 12.5, 10.0)      # centre x photo-est; y moved 6 down per print test
 
-KB1 = dict(x_anchor=30.0,   y=57.0, pins=5, direction=+1,
+KB1 = dict(x_anchor=30.0,   y=56.0, pins=5, direction=+1,
            label="KB1 5-way, contacts UP, leftmost contact 30.0 fr left")
 KB2 = dict(x_anchor=W-27.0, y=64.0, pins=8, direction=-1,
            label="KB2 8-way, contacts DOWN, rightmost contact 27.0 fr right")
@@ -135,8 +135,8 @@ def gen_floorplan(path):
         parts.append(f'  <rect x="{px(lo-3):.0f}" y="{py(k["y"])-10:.0f}" width="{(hi-lo+6)*S:.0f}" height="20" class="fix"/>\n'
                      f'  <line x1="{px(anchor):.0f}" y1="{py(k["y"])-14:.0f}" x2="{px(anchor):.0f}" y2="{py(k["y"])+14:.0f}" class="cross"/>\n'
                      f'  <rect x="{px(lo-6):.0f}" y="{py(k["y"])-24:.0f}" width="{(hi-lo+12)*S:.0f}" height="52" class="keep"/>\n')
-    parts.append(f'  <text x="{px(20):.0f}" y="{py(57)+34:.0f}" class="lblr">KB1 5-way (contacts UP): leftmost contact 30 fr left, 57 fr bottom</text>\n')
-    parts.append(f'  <text x="{px(120):.0f}" y="{py(64)-30:.0f}" class="lblr">KB2 8-way (contacts DOWN): rightmost 27 fr right, 64 fr bottom</text>\n')
+    parts.append(f'  <text x="{px(20):.0f}" y="{py(KB1["y"])+34:.0f}" class="lblr">KB1 5-way (contacts UP): leftmost contact {KB1["x_anchor"]:g} fr left, {KB1["y"]:g} fr bottom</text>\n')
+    parts.append(f'  <text x="{px(120):.0f}" y="{py(KB2["y"])-30:.0f}" class="lblr">KB2 8-way (contacts DOWN): rightmost {W-KB2["x_anchor"]:g} fr right, {KB2["y"]:g} fr bottom</text>\n')
     # holes
     for x, y, d, label, legacy in HOLES:
         cls = "keep" if legacy else "hole"
