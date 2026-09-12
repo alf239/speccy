@@ -117,6 +117,11 @@ the calipers on disagreement.
 - **SD**: push-push microSD, 4-wire SPI, pull-ups.
 - **Audio**: sigma-delta pin → RC → line-out jack; EAR-in jack →
   divider + Schmitt → one pin (phase-2 tape, socket ready from day one).
+- **Speaker**: 40 mm 8-ohm mylar over the PCB sound hole, driven by a
+  PAM8302-class 3.3 V class-D off the same RC node. The originals are
+  period drive-circuit artefacts -- ~200-ohm on Issue 1/2, 40-ohm on
+  Issue 3+ (replacement beepers sold as "Issue 3 or above" are the
+  40-ohm kind) -- and neither suits a class-D amp; standard 8-ohm it is.
 - **Controls**: the case hides everything, so — DIP-4 (divMMC / force-48K
   / snapshot / AY-YM), reset + NMI tactiles reachable through the rear
   slot, plus a pin header to relocate NMI to a case-top button later.
