@@ -69,14 +69,14 @@
     <text x="147.00" y="109.50">speaker hole ~10.0 dia PHOTO-EST: confirm</text>
   </g>
   <g class="slot">
-    <rect x="27.00" y="71.50" width="16.16" height="5" />
-    <line x1="30.00" y1="70.00" x2="30.00" y2="78.00" /><line x1="32.54" y1="70.00" x2="32.54" y2="78.00" /><line x1="35.08" y1="70.00" x2="35.08" y2="78.00" /><line x1="37.62" y1="70.00" x2="37.62" y2="78.00" /><line x1="40.16" y1="70.00" x2="40.16" y2="78.00" />
+    <rect x="27.00" y="71.50" width="16.00" height="5" />
+    <line x1="30.00" y1="70.00" x2="30.00" y2="78.00" /><line x1="32.50" y1="70.00" x2="32.50" y2="78.00" /><line x1="35.00" y1="70.00" x2="35.00" y2="78.00" /><line x1="37.50" y1="70.00" x2="37.50" y2="78.00" /><line x1="40.00" y1="70.00" x2="40.00" y2="78.00" />
     <text x="27.00" y="83.00">KB1 5-way, contacts UP, leftmost contact 30.0 fr left</text>
   </g>
   <g class="slot">
-    <rect x="165.72" y="63.50" width="23.78" height="5" />
-    <line x1="186.50" y1="62.00" x2="186.50" y2="70.00" /><line x1="183.96" y1="62.00" x2="183.96" y2="70.00" /><line x1="181.42" y1="62.00" x2="181.42" y2="70.00" /><line x1="178.88" y1="62.00" x2="178.88" y2="70.00" /><line x1="176.34" y1="62.00" x2="176.34" y2="70.00" /><line x1="173.80" y1="62.00" x2="173.80" y2="70.00" /><line x1="171.26" y1="62.00" x2="171.26" y2="70.00" /><line x1="168.72" y1="62.00" x2="168.72" y2="70.00" />
-    <text x="165.72" y="75.00">KB2 8-way, contacts DOWN, rightmost contact 27.0 fr right</text>
+    <rect x="166.00" y="63.50" width="23.50" height="5" />
+    <line x1="186.50" y1="62.00" x2="186.50" y2="70.00" /><line x1="184.00" y1="62.00" x2="184.00" y2="70.00" /><line x1="181.50" y1="62.00" x2="181.50" y2="70.00" /><line x1="179.00" y1="62.00" x2="179.00" y2="70.00" /><line x1="176.50" y1="62.00" x2="176.50" y2="70.00" /><line x1="174.00" y1="62.00" x2="174.00" y2="70.00" /><line x1="171.50" y1="62.00" x2="171.50" y2="70.00" /><line x1="169.00" y1="62.00" x2="169.00" y2="70.00" />
+    <text x="166.00" y="75.00">KB2 8-way, contacts DOWN, rightmost contact 27.0 fr right</text>
   </g>
   <text x="60" y="26" class="meta">speccy board 1:1 template — outline 213.5 x 130.0. PRINT AT 100%,</text>
   <text x="60" y="31" class="meta">verify the 50 mm bar with calipers before trusting anything.</text>
@@ -84,6 +84,5 @@
   <line x1="60" y1="34" x2="60" y2="38" class="bar"/>
   <line x1="110" y1="34" x2="110" y2="38" class="bar"/>
   <text x="112" y="37.5" class="meta">50 mm</text>
-  <text x="60" y="106" class="meta">ports edge = top. Slot ticks at 2.54 mm pitch: socket pins drifting off the</text>
-  <text x="60" y="111" class="meta">ticks over 8 pins means metric 2.50 (caliper span settles it).</text>
+  <text x="60" y="106" class="meta">ports edge = top. Slot ticks at 2.5 mm pitch (measured: 5-way span 10.0).</text>
 </svg>

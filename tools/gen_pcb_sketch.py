@@ -30,7 +30,7 @@ KB1 = dict(x_anchor=30.0,   y=56.0, pins=5, direction=+1,
            label="KB1 5-way, contacts UP, leftmost contact 30.0 fr left")
 KB2 = dict(x_anchor=W-27.0, y=64.0, pins=8, direction=-1,
            label="KB2 8-way, contacts DOWN, rightmost contact 27.0 fr right")
-PITCH = 2.54                        # tiebreak pending: 2.54 vs 2.50
+PITCH = 2.50                        # MEASURED: 5-way span 10.0 -> metric, not 2.54
 
 # ---- generation -----------------------------------------------------------
 S = 4  # px/mm in the floorplan
@@ -93,8 +93,7 @@ def gen_template(path):
   <line x1="60" y1="34" x2="60" y2="38" class="bar"/>
   <line x1="110" y1="34" x2="110" y2="38" class="bar"/>
   <text x="112" y="37.5" class="meta">50 mm</text>
-  <text x="60" y="106" class="meta">ports edge = top. Slot ticks at {PITCH} mm pitch: socket pins drifting off the</text>
-  <text x="60" y="111" class="meta">ticks over 8 pins means metric 2.50 (caliper span settles it).</text>
+  <text x="60" y="106" class="meta">ports edge = top. Slot ticks at {PITCH} mm pitch (measured: 5-way span 10.0).</text>
 </svg>'''
     open(path, 'w').write(svg)
 

@@ -37,9 +37,9 @@ Frame: component side facing you, ports at top, keyboard edge at bottom.
 - Confirmed against the case keyboard itself: underside photo shows the
   8-way tail on the (mirrored) right, 5-way on the left, both tails
   ~8 cm -- positions are dictated, as suspected.
-- **Contact pitch ~2.5 mm** (macro photo against a steel ruler: 4 joints
-  per cm). To settle 2.54 vs 2.50: caliper the first-to-last contact
-  span -- 5-way: 10.16 vs 10.00 mm; 8-way: 17.78 vs 17.50 mm.
+- **Contact pitch 2.50 mm, metric** -- settled: the 5-way first-to-last
+  span measures 10.0 mm (2.54 would give 10.16). Footprint is NOT the
+  usual 0.1-inch header; use a true 2.50 mm one.
 - **Contact faces oppose**: the 5-way socket's contacts are on the TOP,
   the 8-way's on the BOTTOM (as the user holds it, ports-up frame).
   The two tails insert printed-face opposite ways -- footprint
@@ -57,7 +57,7 @@ Frame: component side facing you, ports at top, keyboard edge at bottom.
   bolt pass) plus two legacy.
 
 Still to measure: X of the centre hole and top bolt (assumed centred);
-the pitch tiebreak spans above; rear wall envelope.
+speaker hole X and diameter (photo-estimated); rear wall envelope.
 
 ## Mechanical strategy: the Issue Two on the desk is the datum
 
